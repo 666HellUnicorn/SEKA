@@ -1,0 +1,28 @@
+{
+  "name": "seka",
+  "version": "1.0.0",
+  "description": "SEKA 是一个可本地部署的个人 / 企业知识库 Agent MVP。它支持文档上传、解析、切块、混合检索、带引用问答、用户反馈与知识迭代，目标是把分散的资料沉淀成可追溯、可更新、可验证的知识系统。",
+  "main": "src/server/server.ts",
+  "scripts": {
+    "dev": "node src/server/server.ts",
+    "seed": "node scripts/seed-demo.ts",
+    "smoke": "node scripts/smoke-test.ts",
+    "test:api": "node scripts/api-test.ts",
+    "test": "npm run typecheck && npm run smoke && npm run test:api",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "marked": "^18.0.5",
+    "pdfjs-dist": "^6.0.227",
+    "tesseract.js": "^7.0.0"
+  }
+}
