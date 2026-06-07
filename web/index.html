@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEKA 本地知识库 Agent</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">S</div>
+          <div>
+            <h1>SEKA</h1>
+            <p>Self-Evolving Knowledge Agent</p>
+          </div>
+        </div>
+
+        <section id="auth-panel" class="panel auth-panel">
+          <h2>登录</h2>
+          <form id="login-form" class="upload-form">
+            <input name="username" type="text" placeholder="用户名" value="admin" required />
+            <input name="password" type="password" placeholder="密码" value="admin123" required />
+            <button type="submit">登录</button>
+          </form>
+          <p class="hint">默认开发账号：admin / admin123。正式使用请设置 SEKA_ADMIN_PASSWORD。</p>
+        </section>
+
+        <section id="user-panel" class="panel auth-panel hidden">
+          <h2>当前用户</h2>
+          <div id="current-user" class="user-card">未登录</div>
+          <form id="change-password-form" class="upload-form">
+            <input name="currentPassword" type="password" placeholder="当前密码" required />
+            <input name="newPassword" type="password" placeholder="新密码，至少 8 位" required />
+            <input name="confirmPassword" type="password" placeholder="确认新密码" required />
+            <button type="submit">更新密码</button>
+          </form>
+          <button id="logout-btn" class="ghost-btn" type="button">退出登录</button>
+        </section>
+
+        <section id="user-management-panel" class="panel hidden">
+          <div class="panel-title-row">
+            <h2>用户管理</h2>
+            <button id="refresh-users" class="ghost-btn" type="button">刷新</button>
+          </div>
+          <form id="create-user-form" class="upload-form">
+            <input name="username" type="text" placeholder="用户名" required />
+            <input name="displayName" type="text" placeholder="显示名称" />
+            <input name="password" type="password" placeholder="初始密码，至少 6 位" required />
+            <select name="role" required>
+              <option value="viewer">viewer 只读</option>
+              <option value="editor">editor 读写</option>
+              <option value="admin">admin 管理员</option>
+            </select>
+            <input name="allowedWorkspaces" type="text" placeholder="授权空间，逗号分隔；留空表示全部" />
+            <button type="submit">创建用户</button>
+          </form>
+          <div id="users-list" class="docs-list empty">暂无用户</div>
+        </section>
+
+        <section class="panel">
+          <h2>上传知识</h2>
+          <form id="upload-form" class="upload-form">
+            <input id="file-input" name="file" type="file" required />
+            <input id="title-input" name="title" type="text" placeholder="可选：文档标题" />
+            <input name="workspace" type="text" placeholder="知识空间，例如 personal / company" value="default" />
+            <input name="tags" type="text" placeholder="标签，逗号分隔，例如 简历,RAG" />
+            <textarea name="description" rows="2" placeholder="可选：文档说明"></textarea>
+            <button type="submit">上传并索引</button>
+          </form>
+          <p class="hint">支持 TXT / Markdown / PDF / 图片。图片 OCR 使用 tesseract.js。</p>
+        </section>
+
+        <section class="panel">
+          <h2>导入网页</h2>
+          <form id="url-form" class="upload-form">
+            <input id="url-input" name="url" type="url" placeholder="https://example.com/article" required />
+            <input name="title" type="text" placeholder="可选：网页标题" />
+            <input name="workspace" type="text" placeholder="知识空间" value="default" />
+            <input name="tags" type="text" placeholder="标签，逗号分隔" />
+            <button type="submit">抓取并索引</button>
+          </form>
+          <p class="hint">适合把外部资料、技术文章、产品说明沉淀进知识库。</p>
+        </section>
+
+        <section class="panel docs-panel">
+          <div class="panel-title-row">
+            <h2>知识文档</h2>
+            <button id="refresh-docs" class="ghost-btn">刷新</button>
+          </div>
+          <div id="docs-list" class="docs-list empty">暂无文档</div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">本地部署 · 答案溯源 · 反馈迭代</p>
+            <h2>个人 / 企业知识库 Agent MVP</h2>
+            <p>
+              上传资料后，SEKA 会自动解析、切块、检索并基于来源片段回答问题。
+              你可以把高质量问答保存为新知识，让知识库持续进化。
+            </p>
+          </div>
+          <div id="health" class="status-pill">连接中…</div>
+        </header>
+
+        <section class="workspace-bar">
+          <label>
+            当前检索空间
+            <select id="workspace-select">
+              <option value="all">全部空间</option>
+            </select>
+          </label>
+          <div id="workspace-summary" class="workspace-summary">空间统计加载中…</div>
+        </section>
+
+        <section class="sources-card">
+          <div class="panel-title-row">
+            <h2>知识库概览</h2>
+            <button id="refresh-stats" class="ghost-btn" type="button">刷新</button>
+          </div>
+          <div id="stats-grid" class="stats-grid empty">登录后显示知识库概览</div>
+        </section>
+
+        <section class="sources-card">
+          <div class="panel-title-row">
+            <h2>运行设置</h2>
+            <button id="refresh-settings" class="ghost-btn" type="button">刷新</button>
+          </div>
+          <div id="security-warning" class="empty">登录后显示安全提示</div>
+          <div id="settings-list" class="settings-list empty">登录后显示运行配置</div>
+        </section>
+
+        <section class="chat-card">
+          <div id="messages" class="messages">
+            <div class="message assistant">
+              <div class="avatar">AI</div>
+              <div class="bubble">
+                你好，我是 SEKA。请先上传文档，然后向我提问。回答会尽量给出引用来源。
+              </div>
+            </div>
+          </div>
+
+          <form id="query-form" class="query-form">
+            <textarea
+              id="question-input"
+              rows="3"
+              placeholder="例如：这个项目的核心目标是什么？有哪些可以写进简历的亮点？"
+              required
+            ></textarea>
+            <div class="query-actions">
+              <label>
+                Top K
+                <input id="topk-input" type="number" value="5" min="1" max="12" />
+              </label>
+              <button type="submit">提问</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="agent-card">
+          <div class="panel-title-row">
+            <h2>知识检索</h2>
+            <span class="hint">直接查看命中的原始知识片段，不调用 LLM</span>
+          </div>
+          <form id="search-form" class="agent-form">
+            <input id="search-input" name="query" type="text" placeholder="输入关键词或问题，例如：反馈修正 / RBAC / Agent 工具调用" required />
+            <div class="query-actions">
+              <label>
+                Top K
+                <input id="search-topk-input" type="number" value="8" min="1" max="20" />
+              </label>
+              <button type="submit">检索片段</button>
+            </div>
+          </form>
+          <div id="search-result" class="sources-list empty">暂无检索结果</div>
+        </section>
+
+        <section class="agent-card">
+          <div class="panel-title-row">
+            <h2>Agent 工作台</h2>
+            <span class="hint">自动识别：问答 / 对比 / 缺口分析 / 网页导入 / 总结</span>
+          </div>
+          <form id="agent-form" class="agent-form">
+            <textarea
+              id="agent-task-input"
+              rows="3"
+              placeholder="例如：分析当前知识库还缺少哪些内容；或：抓取并保存 https://example.com 到 company 空间"
+              required
+            ></textarea>
+            <div class="query-actions">
+              <label>
+                Top K
+                <input id="agent-topk-input" type="number" value="6" min="1" max="12" />
+              </label>
+              <button type="submit">运行 Agent</button>
+            </div>
+          </form>
+          <div id="agent-result" class="agent-result empty">暂无 Agent 运行结果</div>
+        </section>
+
+        <section class="sources-card">
+          <div class="panel-title-row">
+            <h2>导出报告</h2>
+            <span class="hint">导出当前知识库 Markdown 报告</span>
+          </div>
+          <form id="export-form" class="agent-form">
+            <input name="workspace" type="text" placeholder="workspace，留空或 all 表示全部" value="all" />
+            <button type="submit">导出 Markdown</button>
+          </form>
+          <div id="export-result" class="sources-list empty">暂无导出结果</div>
+        </section>
+
+        <section class="sources-card">
+          <h2>最近一次引用来源</h2>
+          <div id="sources-list" class="sources-list empty">暂无来源</div>
+        </section>
+
+        <section class="sources-card">
+          <h2>文档详情与切块</h2>
+          <div id="document-detail" class="document-detail empty">请选择左侧文档查看详情与切块</div>
+        </section>
+
+        <section class="sources-card">
+          <div class="panel-title-row">
+            <h2>审计日志</h2>
+            <button id="refresh-audit" class="ghost-btn">刷新</button>
+          </div>
+          <div id="audit-list" class="sources-list empty">管理员登录后可查看审计日志</div>
+        </section>
+
+        <section class="sources-card">
+          <div class="panel-title-row">
+            <h2>反馈修正工作台</h2>
+            <button id="refresh-feedback" class="ghost-btn">刷新</button>
+          </div>
+          <div id="feedback-list" class="sources-list empty">暂无反馈</div>
+        </section>
+      </main>
+    </div>
+
+    <template id="doc-template">
+      <article class="doc-item">
+        <div>
+          <h3></h3>
+          <p></p>
+        </div>
+        <div class="doc-actions">
+          <button data-action="reindex" class="ghost-btn">重建</button>
+          <button data-action="delete" class="danger-btn">删除</button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/app.ts"></script>
+  </body>
+</html>
