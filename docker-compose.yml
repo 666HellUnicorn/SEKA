@@ -1,0 +1,19 @@
+services:
+  seka:
+    build: .
+    container_name: seka
+    ports:
+      - "8765:8765"
+    environment:
+      SEKA_HOST: 0.0.0.0
+      SEKA_PORT: 8765
+      SEKA_DATA_DIR: /app/data
+      SEKA_ADMIN_USERNAME: admin
+      SEKA_ADMIN_PASSWORD: change-me-please
+      SEKA_OCR_LANG: eng
+    volumes:
+      - seka-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  seka-data:
