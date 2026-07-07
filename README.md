@@ -2,6 +2,26 @@
 
 SEKA 是一个 **TypeScript 全栈**的本地个人 / 企业知识库 Agent MVP。它支持文档上传、解析、切块、混合检索、带引用问答、用户反馈与知识迭代，目标是把分散资料沉淀成可追溯、可更新、可验证的知识系统。
 
+
+## Java 后端独立版本
+
+本仓库额外提供一个独立的 **Spring Boot 3 + Java 21 + JPA + H2** 后端实现，位于：
+
+```text
+java-backend/
+```
+
+它复刻核心知识库 Agent 能力：登录会话、admin/editor/viewer RBAC、workspace 授权、审计日志、文档上传切块、检索问答、反馈闭环和 Markdown 报告导出。适合作为简历中的 Java 企业后端版本展示。
+
+启动：
+
+```powershell
+cd java-backend
+mvn spring-boot:run
+```
+
+默认地址：`http://127.0.0.1:8865`，默认账号：`admin / admin123`。
+
 ## 当前实现
 
 - **后端**：Node.js + TypeScript + 原生 HTTP Server。
@@ -255,3 +275,4 @@ flowchart LR
 - 增加 Git 仓库解析、飞书 / Notion 接入。
 - 增加 reranker、评测集、召回率 / 准确率报表。
 - 增加更多数据源连接器、批量导入和导出 HTML/PDF 报告。
+

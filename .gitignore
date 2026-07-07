@@ -8,3 +8,7 @@ data/
 .DS_Store
 node_modules/
 dist/
+
+# Java backend
+java-backend/target/
+java-backend/data-java/
