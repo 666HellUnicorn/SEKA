@@ -1,5 +1,6 @@
 package com.seka;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ class ApiController {
   }
 
   @PostMapping("/auth/login")
-  AuthSession login(@RequestBody LoginRequest request) { return auth.login(request.username(), request.password()); }
+  AuthSession login(@Valid @RequestBody LoginRequest request) { return auth.login(request.username(), request.password()); }
 
   @GetMapping("/auth/me")
   Map<String, Object> me(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
@@ -48,20 +49,20 @@ class ApiController {
   }
 
   @PostMapping("/users")
-  ResponseEntity<Map<String, Object>> createUser(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestBody CreateUserRequest request) {
+  ResponseEntity<Map<String, Object>> createUser(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody CreateUserRequest request) {
     AuthSession session = requireAdmin(authorization);
     PublicUser user = auth.createUser(request, session.user());
     return ResponseEntity.status(201).body(Map.of("user", user));
   }
 
   @PostMapping("/users/{id}/status")
-  Map<String, Object> setUserStatus(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody UserStatusRequest request) {
+  Map<String, Object> setUserStatus(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody UserStatusRequest request) {
     AuthSession session = requireAdmin(authorization);
     return Map.of("user", auth.setUserActive(id, request.isActive(), session.user()));
   }
 
   @PostMapping("/users/{id}/workspaces")
-  Map<String, Object> setUserWorkspaces(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody WorkspaceAuthRequest request) {
+  Map<String, Object> setUserWorkspaces(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody WorkspaceAuthRequest request) {
     AuthSession session = requireAdmin(authorization);
     return Map.of("user", auth.setUserWorkspaces(id, request.allowedWorkspaces(), session.user()));
   }
@@ -99,7 +100,7 @@ class ApiController {
   }
 
   @PatchMapping("/documents/{id}/metadata")
-  Map<String, Object> updateDocumentMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody DocumentMetadataRequest request) {
+  Map<String, Object> updateDocumentMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody DocumentMetadataRequest request) {
     AuthSession session = requireWrite(authorization);
     KnowledgeDocument before = kb.getDocument(id);
     requireWorkspace(session.user(), before.workspace());
@@ -134,7 +135,7 @@ class ApiController {
   }
 
   @PostMapping("/search")
-  SearchResult search(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestBody SearchRequest request) {
+  SearchResult search(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody SearchRequest request) {
     AuthSession session = requireRead(authorization);
     requireWorkspace(session.user(), emptyToAll(request.workspace()));
     SearchResult result = kb.search(request.query(), request.topK(), request.workspace());
@@ -143,7 +144,7 @@ class ApiController {
   }
 
   @PostMapping("/query")
-  QueryResult query(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestBody QueryRequest request) {
+  QueryResult query(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody QueryRequest request) {
     AuthSession session = requireRead(authorization);
     requireWorkspace(session.user(), emptyToAll(request.workspace()));
     QueryResult result = kb.query(request.question(), request.topK(), request.workspace());
@@ -152,7 +153,7 @@ class ApiController {
   }
 
   @PostMapping("/agent/run")
-  AgentRunResult agent(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestBody AgentRequest request) {
+  AgentRunResult agent(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody AgentRequest request) {
     AuthSession session = requireRead(authorization);
     requireWorkspace(session.user(), emptyToAll(request.workspace()));
     AgentRunResult result = kb.agentRun(request.task(), request.workspace(), request.topK());
@@ -161,7 +162,7 @@ class ApiController {
   }
 
   @PostMapping("/feedback")
-  ResponseEntity<Map<String, Object>> feedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestBody FeedbackRequest request) {
+  ResponseEntity<Map<String, Object>> feedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody FeedbackRequest request) {
     AuthSession session = requireWrite(authorization);
     FeedbackItem item = kb.submitFeedback(request);
     auth.audit(session.user(), "feedback.create", "feedback", item.id(), Map.of("feedbackType", item.feedbackType()));
@@ -169,7 +170,7 @@ class ApiController {
   }
 
   @PostMapping("/feedback/{id}/resolve")
-  Map<String, Object> resolveFeedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody FeedbackResolveRequest request) {
+  Map<String, Object> resolveFeedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody FeedbackResolveRequest request) {
     AuthSession session = requireWrite(authorization);
     FeedbackItem item = kb.resolveFeedback(id, request.resolution(), session.user());
     auth.audit(session.user(), "feedback.resolve", "feedback", item.id(), Map.of("status", item.status(), "resolvedBy", item.resolvedBy()));

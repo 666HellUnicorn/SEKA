@@ -48,6 +48,7 @@ java-backend/data-java/seka-java.mv.db
 - workspace 维度 Markdown 报告导出
 - OpenAPI / Swagger UI 接口文档
 - Actuator 健康检查与基础运行指标
+- Bean Validation 请求参数校验与统一 400 错误响应
 
 ## 主要接口
 
@@ -121,7 +122,8 @@ http://127.0.0.1:8865/actuator/metrics
 8. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
 9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
 10. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
-11. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档和 Actuator。
+11. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
+12. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 

@@ -49,7 +49,37 @@ http://127.0.0.1:8865/actuator/metrics
 
 > 我给 Java 后端接入了 Spring Boot Actuator，只暴露 health、info、metrics 这类基础运维端点。这样本地演示、Docker 部署和 CI 都可以快速判断服务是否启动成功，也能展示 JVM、HTTP、数据库连接等基础指标。
 
-## 4. 管理员登录
+## 4. 展示统一参数校验
+
+```bash
+curl -i -X POST http://127.0.0.1:8865/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"","password":"123"}'
+```
+
+预期：
+
+```text
+HTTP/1.1 400
+```
+
+响应体会包含：
+
+```json
+{
+  "error": "请求参数校验失败",
+  "validationErrors": {
+    "username": "...",
+    "password": "..."
+  }
+}
+```
+
+面试讲法：
+
+> 我没有把参数校验散落在业务代码里，而是用 Bean Validation 注解约束 DTO，再通过全局异常处理器统一返回 400 和字段级 validationErrors，这样前后端联调时错误结构稳定。
+
+## 5. 管理员登录
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/auth/login \
@@ -69,7 +99,7 @@ PowerShell：
 $ADMIN_TOKEN = "复制登录返回的 token"
 ```
 
-## 5. 上传两个知识空间的文档
+## 6. 上传两个知识空间的文档
 
 上传 `resume` 空间：
 
@@ -99,7 +129,7 @@ curl -s -X POST http://127.0.0.1:8865/api/documents \
 
 > 上传后服务端会保存原始文件、抽取文本、切分 chunk，并通过 JPA 持久化 document/chunk 元数据，为后续检索和问答提供可追溯来源。
 
-## 6. 创建 viewer 用户并限制 workspace
+## 7. 创建 viewer 用户并限制 workspace
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/users \
@@ -122,7 +152,7 @@ curl -s -X POST http://127.0.0.1:8865/api/auth/login \
 export VIEWER_TOKEN="复制 viewer 登录返回的 token"
 ```
 
-## 7. 验证 workspace 隔离
+## 8. 验证 workspace 隔离
 
 viewer 查看文档：
 
@@ -170,7 +200,7 @@ HTTP/1.1 403
 
 > 这里同时验证了 RBAC 和 workspace ABAC。viewer 有 READ 权限但没有 WRITE 权限，并且非 admin 用户只能访问 allowedWorkspaces 白名单内的数据。
 
-## 8. 反馈闭环
+## 9. 反馈闭环
 
 提交反馈：
 
@@ -194,7 +224,7 @@ curl -s -X POST http://127.0.0.1:8865/api/feedback/{feedbackId}/resolve \
 
 > 反馈不是只记录“赞/踩”，而是形成 open → resolved 的状态流转，能支撑知识库持续迭代。
 
-## 9. 导出 Markdown 报告
+## 10. 导出 Markdown 报告
 
 ```bash
 curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
@@ -208,7 +238,7 @@ curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
 - 摘要
 - 反馈状态
 
-## 10. 查看审计日志
+## 11. 查看审计日志
 
 ```bash
 curl -s http://127.0.0.1:8865/api/audit-logs \
@@ -225,13 +255,13 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 - `document.update_metadata`
 - `document.delete`
 
-## 11. 简历描述
+## 12. 简历描述
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档和 Actuator 健康检查，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出和可观测性链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查和 Bean Validation 参数校验，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
 
-## 12. 面试回答模板
+## 13. 面试回答模板
 
 **Q：为什么要单独做 Java 后端？**
 

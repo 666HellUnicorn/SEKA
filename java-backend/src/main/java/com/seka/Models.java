@@ -1,21 +1,29 @@
 package com.seka;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 import java.util.Map;
 
 enum Role { ADMIN, EDITOR, VIEWER }
 enum Permission { READ, WRITE, ADMIN }
 
-record LoginRequest(String username, String password) {}
-record CreateUserRequest(String username, String password, String role, String allowedWorkspaces) {}
+record LoginRequest(@NotBlank @Size(max = 80) String username, @NotBlank @Size(min = 6, max = 120) String password) {}
+record CreateUserRequest(@NotBlank @Size(max = 80) String username, @NotBlank @Size(min = 6, max = 120) String password,
+                         @NotBlank @Size(max = 20) String role, @Size(max = 2000) String allowedWorkspaces) {}
 record UserStatusRequest(boolean isActive) {}
-record WorkspaceAuthRequest(String allowedWorkspaces) {}
-record SearchRequest(String query, String workspace, int topK) {}
-record QueryRequest(String question, String workspace, int topK) {}
-record AgentRequest(String task, String workspace, int topK) {}
-record FeedbackRequest(String qaId, String question, String answer, String feedbackType, String comment) {}
-record FeedbackResolveRequest(String resolution) {}
-record DocumentMetadataRequest(String title, String workspace, String tags, String description) {}
+record WorkspaceAuthRequest(@Size(max = 2000) String allowedWorkspaces) {}
+record SearchRequest(@NotBlank @Size(max = 1000) String query, @Size(max = 120) String workspace, @Min(0) int topK) {}
+record QueryRequest(@NotBlank @Size(max = 2000) String question, @Size(max = 120) String workspace, @Min(0) int topK) {}
+record AgentRequest(@NotBlank @Size(max = 2000) String task, @Size(max = 120) String workspace, @Min(0) int topK) {}
+record FeedbackRequest(@Size(max = 120) String qaId, @NotBlank @Size(max = 2000) String question,
+                       @NotBlank @Size(max = 4000) String answer, @NotBlank @Size(max = 40) String feedbackType,
+                       @Size(max = 2000) String comment) {}
+record FeedbackResolveRequest(@NotBlank @Size(max = 4000) String resolution) {}
+record DocumentMetadataRequest(@Size(max = 200) String title, @Size(max = 120) String workspace,
+                               @Size(max = 2000) String tags, @Size(max = 2000) String description) {}
 
 record PublicUser(String id, String username, String displayName, Role role, boolean isActive,
                   List<String> allowedWorkspaces, String createdAt, String lastLoginAt) {

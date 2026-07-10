@@ -45,7 +45,16 @@ class SekaJavaApiIntegrationTest {
     assertThat(openApi.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(openApi.getBody()).contains("SEKA Java Backend API", "/api/documents", "/api/export/markdown");
 
+    ResponseEntity<Map> invalidLogin = rest.postForEntity(base + "/api/auth/login", Map.of("username", "", "password", "123"), Map.class);
+    assertThat(invalidLogin.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(invalidLogin.getBody()).containsKey("validationErrors");
+
     String adminToken = login(base, "admin", "admin123");
+
+    ResponseEntity<Map> invalidQuery = postJson(base + "/api/query", adminToken, Map.of("question", "", "workspace", "resume", "topK", 3));
+    assertThat(invalidQuery.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    Map<String, Object> queryErrors = (Map<String, Object>) invalidQuery.getBody().get("validationErrors");
+    assertThat(queryErrors).containsKey("question");
 
     Map<String, Object> resumeDoc = upload(base, adminToken, "resume.md", "# Resume\nSEKA Java 支持 resume 知识空间。", "resume");
     Map<String, Object> companyDoc = upload(base, adminToken, "company.md", "# Company\nSEKA Java 支持 company 知识空间。", "company");
@@ -107,6 +116,9 @@ class SekaJavaApiIntegrationTest {
     ));
     assertThat(feedback.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     String feedbackId = String.valueOf(((Map<String, Object>) feedback.getBody().get("feedback")).get("id"));
+    ResponseEntity<Map> invalidResolve = postJson(base + "/api/feedback/" + feedbackId + "/resolve", adminToken, Map.of("resolution", ""));
+    assertThat(invalidResolve.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat((Map<String, Object>) invalidResolve.getBody().get("validationErrors")).containsKey("resolution");
     ResponseEntity<Map> resolved = postJson(base + "/api/feedback/" + feedbackId + "/resolve", adminToken, Map.of("resolution", "已补充授权与审计日志说明"));
     assertThat(resolved.getStatusCode()).isEqualTo(HttpStatus.OK);
     Map<String, Object> resolvedFeedback = (Map<String, Object>) resolved.getBody().get("feedback");
