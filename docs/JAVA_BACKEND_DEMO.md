@@ -208,7 +208,7 @@ HTTP/1.1 403
 curl -s -X POST http://127.0.0.1:8865/api/feedback \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"qaId":"qa-demo","question":"项目亮点是什么？","answer":"旧回答","feedbackType":"incorrect","comment":"需要补充权限与审计日志"}'
+  -d '{"qaId":"qa-demo","question":"项目亮点是什么？","answer":"旧回答","workspace":"resume","feedbackType":"incorrect","comment":"需要补充权限与审计日志"}'
 ```
 
 处理反馈：
@@ -223,6 +223,14 @@ curl -s -X POST http://127.0.0.1:8865/api/feedback/{feedbackId}/resolve \
 面试讲法：
 
 > 反馈不是只记录“赞/踩”，而是形成 open → resolved 的状态流转，能支撑知识库持续迭代。
+> 每条反馈也会记录 workspace，因此 `resume` 报告只展示 `resume` 反馈，不会混入 `company` 空间的问题。
+
+按空间查看反馈：
+
+```bash
+curl -s "http://127.0.0.1:8865/api/feedback?workspace=resume" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
 
 ## 10. 导出 Markdown 报告
 
@@ -259,7 +267,7 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查和 Bean Validation 参数校验，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查和 Bean Validation 参数校验，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
 
 ## 13. 面试回答模板
 

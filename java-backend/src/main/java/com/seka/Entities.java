@@ -138,6 +138,7 @@ class FeedbackEntity {
   String qaId;
   @Column(length = 2000) String question;
   @Column(length = 4000) String answer;
+  String workspace;
   String feedbackType;
   @Column(length = 2000) String comment;
   String status;
@@ -146,11 +147,12 @@ class FeedbackEntity {
   String resolvedAt;
   String createdAt;
   protected FeedbackEntity() {}
-  FeedbackEntity(String id, String qaId, String question, String answer, String feedbackType, String comment, String status, String resolution, String resolvedBy, String resolvedAt, String createdAt) {
+  FeedbackEntity(String id, String qaId, String question, String answer, String workspace, String feedbackType, String comment, String status, String resolution, String resolvedBy, String resolvedAt, String createdAt) {
     this.id = id;
     this.qaId = qaId;
     this.question = question;
     this.answer = answer;
+    this.workspace = workspace;
     this.feedbackType = feedbackType;
     this.comment = comment;
     this.status = status;

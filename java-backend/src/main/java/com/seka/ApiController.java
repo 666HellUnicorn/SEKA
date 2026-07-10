@@ -164,23 +164,27 @@ class ApiController {
   @PostMapping("/feedback")
   ResponseEntity<Map<String, Object>> feedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody FeedbackRequest request) {
     AuthSession session = requireWrite(authorization);
+    requireWorkspace(session.user(), emptyToDefault(request.workspace()));
     FeedbackItem item = kb.submitFeedback(request);
-    auth.audit(session.user(), "feedback.create", "feedback", item.id(), Map.of("feedbackType", item.feedbackType()));
+    auth.audit(session.user(), "feedback.create", "feedback", item.id(), Map.of("feedbackType", item.feedbackType(), "workspace", item.workspace()));
     return ResponseEntity.status(201).body(Map.of("feedback", item));
   }
 
   @PostMapping("/feedback/{id}/resolve")
   Map<String, Object> resolveFeedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody FeedbackResolveRequest request) {
     AuthSession session = requireWrite(authorization);
+    FeedbackItem before = kb.getFeedback(id);
+    requireWorkspace(session.user(), before.workspace());
     FeedbackItem item = kb.resolveFeedback(id, request.resolution(), session.user());
-    auth.audit(session.user(), "feedback.resolve", "feedback", item.id(), Map.of("status", item.status(), "resolvedBy", item.resolvedBy()));
+    auth.audit(session.user(), "feedback.resolve", "feedback", item.id(), Map.of("status", item.status(), "resolvedBy", item.resolvedBy(), "workspace", item.workspace()));
     return Map.of("feedback", item);
   }
 
   @GetMapping("/feedback")
-  Map<String, Object> feedbackList(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-    requireRead(authorization);
-    return Map.of("feedback", kb.feedback());
+  Map<String, Object> feedbackList(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @RequestParam(defaultValue = "all") String workspace) {
+    AuthSession session = requireRead(authorization);
+    requireWorkspace(session.user(), workspace);
+    return Map.of("feedback", kb.feedback(workspace).stream().filter(item -> auth.canAccessWorkspace(session.user(), item.workspace())).toList());
   }
 
   @GetMapping(value = "/export/markdown", produces = "text/markdown;charset=UTF-8")
@@ -212,4 +216,5 @@ class ApiController {
     return authorization.replaceFirst("(?i)^Bearer\\s+", "").trim();
   }
   private static String emptyToAll(String workspace) { return workspace == null || workspace.isBlank() ? "all" : workspace; }
+  private static String emptyToDefault(String workspace) { return workspace == null || workspace.isBlank() ? "default" : workspace; }
 }

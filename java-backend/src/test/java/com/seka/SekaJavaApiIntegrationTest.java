@@ -92,6 +92,9 @@ class SekaJavaApiIntegrationTest {
     ResponseEntity<Map> deniedQuery = postJson(base + "/api/query", viewerToken, Map.of("question", "company 有什么？", "workspace", "company", "topK", 3));
     assertThat(deniedQuery.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
+    ResponseEntity<Map> deniedCompanyFeedback = get(base + "/api/feedback?workspace=company", viewerToken);
+    assertThat(deniedCompanyFeedback.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
     ResponseEntity<Map> deniedUpload = uploadResponse(base, viewerToken, "blocked.md", "blocked", "resume");
     assertThat(deniedUpload.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
@@ -105,17 +108,35 @@ class SekaJavaApiIntegrationTest {
 
     ResponseEntity<Map> enabled = postJson(base + "/api/users/" + viewerId + "/status", adminToken, Map.of("isActive", true));
     assertThat(enabled.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(login(base, "viewer-demo", "viewer123")).isNotBlank();
+    viewerToken = login(base, "viewer-demo", "viewer123");
+    assertThat(viewerToken).isNotBlank();
 
     ResponseEntity<Map> feedback = postJson(base + "/api/feedback", adminToken, Map.of(
         "qaId", "qa-demo",
         "question", "resume 项目亮点是什么？",
         "answer", "旧回答",
+        "workspace", "resume",
         "feedbackType", "incorrect",
         "comment", "需要补充权限与审计日志"
     ));
     assertThat(feedback.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     String feedbackId = String.valueOf(((Map<String, Object>) feedback.getBody().get("feedback")).get("id"));
+    ResponseEntity<Map> companyFeedback = postJson(base + "/api/feedback", adminToken, Map.of(
+        "qaId", "qa-company",
+        "question", "company 项目亮点是什么？",
+        "answer", "company old answer",
+        "workspace", "company",
+        "feedbackType", "incorrect",
+        "comment", "company-only-feedback"
+    ));
+    assertThat(companyFeedback.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<Map> resumeFeedbackList = get(base + "/api/feedback?workspace=resume", viewerToken);
+    assertThat(resumeFeedbackList.getStatusCode()).isEqualTo(HttpStatus.OK);
+    List<Map<String, Object>> resumeFeedbackItems = (List<Map<String, Object>>) resumeFeedbackList.getBody().get("feedback");
+    assertThat(resumeFeedbackItems).isNotEmpty();
+    assertThat(resumeFeedbackItems).allMatch(item -> "resume".equals(item.get("workspace")));
+
     ResponseEntity<Map> invalidResolve = postJson(base + "/api/feedback/" + feedbackId + "/resolve", adminToken, Map.of("resolution", ""));
     assertThat(invalidResolve.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat((Map<String, Object>) invalidResolve.getBody().get("validationErrors")).containsKey("resolution");
@@ -140,6 +161,7 @@ class SekaJavaApiIntegrationTest {
     ResponseEntity<String> report = getText(base + "/api/export/markdown?workspace=resume", adminToken);
     assertThat(report.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(report.getBody()).contains("## 知识空间", "## 文档清单", "摘要：", "## 反馈状态", "Java Resume Knowledge", "已修正反馈：1");
+    assertThat(report.getBody()).doesNotContain("company-only-feedback");
   }
 
   private String login(String base, String username, String password) {

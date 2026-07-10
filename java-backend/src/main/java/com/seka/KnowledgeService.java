@@ -120,14 +120,18 @@ class KnowledgeService {
   }
 
   FeedbackItem submitFeedback(FeedbackRequest request) {
-    FeedbackEntity row = new FeedbackEntity(id(), request.qaId(), request.question(), request.answer(), request.feedbackType(), request.comment(), "open", "", "", "", now());
+    FeedbackEntity row = new FeedbackEntity(id(), request.qaId(), request.question(), request.answer(), normalizeWorkspace(request.workspace()), request.feedbackType(), request.comment(), "open", "", "", "", now());
     feedback.save(row);
     return toFeedback(row);
   }
 
+  FeedbackItem getFeedback(String id) {
+    return toFeedback(findFeedback(id));
+  }
+
   @Transactional
   FeedbackItem resolveFeedback(String id, String resolution, PublicUser actor) {
-    FeedbackEntity row = feedback.findById(id).orElseThrow(() -> new ApiException(404, "反馈不存在"));
+    FeedbackEntity row = findFeedback(id);
     row.status = "resolved";
     row.resolution = resolution == null || resolution.isBlank() ? "已确认并完成修正" : resolution.trim();
     row.resolvedBy = actor.username();
@@ -136,15 +140,19 @@ class KnowledgeService {
     return toFeedback(row);
   }
 
-  List<FeedbackItem> feedback() {
-    return feedback.findTop100ByOrderByCreatedAtDesc().stream().map(this::toFeedback).toList();
+  List<FeedbackItem> feedback(String workspace) {
+    String scope = normalizeScope(workspace);
+    return ("all".equals(scope) ? feedback.findTop100ByOrderByCreatedAtDesc() : feedback.findTop100ByWorkspaceOrderByCreatedAtDesc(scope))
+        .stream()
+        .map(this::toFeedback)
+        .toList();
   }
 
   String exportMarkdownReport(String workspace) {
     String scope = normalizeScope(workspace);
     List<KnowledgeDocument> docs = listDocuments().stream().filter(doc -> "all".equals(scope) || doc.workspace().equals(scope)).toList();
     List<WorkspaceSummary> summaries = workspaces().stream().filter(item -> "all".equals(scope) || item.name().equals(scope)).toList();
-    List<FeedbackItem> feedbackItems = feedback();
+    List<FeedbackItem> feedbackItems = feedback(scope);
     long open = feedbackItems.stream().filter(item -> "open".equals(item.status())).count();
     long resolved = feedbackItems.stream().filter(item -> "resolved".equals(item.status())).count();
     StringBuilder md = new StringBuilder();
@@ -171,7 +179,7 @@ class KnowledgeService {
         .append("摘要：").append(doc.summary().isBlank() ? "无" : doc.summary()).append("\n\n"));
     md.append("## 反馈状态\n\n");
     if (feedbackItems.isEmpty()) md.append("- 暂无反馈\n");
-    feedbackItems.forEach(item -> md.append("- [").append(item.status()).append("] ").append(item.feedbackType()).append(" · ").append(item.createdAt()).append("\n")
+    feedbackItems.forEach(item -> md.append("- [").append(item.status()).append("] ").append(item.workspace()).append(" · ").append(item.feedbackType()).append(" · ").append(item.createdAt()).append("\n")
         .append("  - 问题：").append(item.question()).append("\n")
         .append("  - 反馈：").append(item.comment() == null || item.comment().isBlank() ? "无" : item.comment()).append("\n"));
     return md.toString();
@@ -196,9 +204,10 @@ class KnowledgeService {
   }
 
   private DocumentEntity findDocument(String id) { return documents.findById(id).orElseThrow(() -> new ApiException(404, "文档不存在")); }
+  private FeedbackEntity findFeedback(String id) { return feedback.findById(id).orElseThrow(() -> new ApiException(404, "反馈不存在")); }
   private KnowledgeDocument toDocument(DocumentEntity doc) { return new KnowledgeDocument(doc.id, doc.title, doc.filename, doc.filePath, doc.workspace, split(doc.tags), doc.description, doc.status, doc.summary, doc.sizeBytes, doc.chunkCount, doc.createdAt, doc.updatedAt); }
   private KnowledgeChunk toChunk(ChunkEntity chunk) { return new KnowledgeChunk(chunk.id, chunk.documentId, chunk.chunkIndex, chunk.content, chunk.pageNumber, chunk.sectionTitle, chunk.tokenCount, chunk.createdAt); }
-  private FeedbackItem toFeedback(FeedbackEntity row) { return new FeedbackItem(row.id, row.qaId, row.question, row.answer, row.feedbackType, row.comment, row.status, row.resolution, row.resolvedBy, row.resolvedAt, row.createdAt); }
+  private FeedbackItem toFeedback(FeedbackEntity row) { return new FeedbackItem(row.id, row.qaId, row.question, row.answer, row.workspace == null || row.workspace.isBlank() ? "default" : row.workspace, row.feedbackType, row.comment, row.status, row.resolution, row.resolvedBy, row.resolvedAt, row.createdAt); }
 
   private static List<CitationSource> renumber(List<CitationSource> sources) { List<CitationSource> output = new ArrayList<>(); for (int i = 0; i < sources.size(); i++) { CitationSource s = sources.get(i); output.add(new CitationSource(i + 1, s.chunkId(), s.documentId(), s.documentTitle(), s.documentFilename(), s.pageNumber(), s.sectionTitle(), s.score(), s.keywordScore(), s.vectorScore(), s.snippet())); } return output; }
   private static List<ChunkEntity> chunk(String documentId, String text) { List<ChunkEntity> result = new ArrayList<>(); int size = 700; for (int start = 0, index = 0; start < text.length(); start += size, index++) { String content = text.substring(start, Math.min(start + size, text.length())).trim(); if (!content.isBlank()) result.add(new ChunkEntity(id(), documentId, index, content, index + 1, "", content.length(), now())); } return result; }

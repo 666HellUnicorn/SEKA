@@ -42,7 +42,7 @@ java-backend/data-java/seka-java.mv.db
 - 本地提取式 RAG 问答
 - Agent run 与 tool call 返回
 - 用户反馈落库
-- 反馈处理闭环：open → resolved，记录处理人和处理说明
+- 反馈处理闭环：open → resolved，记录 workspace、处理人和处理说明
 - 文档维护：修改 title / workspace / tags / description
 - 文档删除：删除文档、chunks 和本地上传文件
 - workspace 维度 Markdown 报告导出
@@ -77,7 +77,7 @@ POST /api/agent/run
 
 POST /api/feedback
 POST /api/feedback/{id}/resolve
-GET  /api/feedback
+GET  /api/feedback?workspace=resume
 GET  /api/export/markdown?workspace=resume
 
 GET  /actuator/health
@@ -117,7 +117,7 @@ http://127.0.0.1:8865/actuator/metrics
 3. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
 4. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
 5. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
-6. **反馈闭环**：用户提交错误反馈，管理员处理后标记 resolved，并出现在报告中。
+6. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
 7. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录。
 8. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
 9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。

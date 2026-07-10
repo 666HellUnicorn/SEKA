@@ -29,4 +29,5 @@ interface ChunkRepository extends JpaRepository<ChunkEntity, String> {
 
 interface FeedbackRepository extends JpaRepository<FeedbackEntity, String> {
   List<FeedbackEntity> findTop100ByOrderByCreatedAtDesc();
+  List<FeedbackEntity> findTop100ByWorkspaceOrderByCreatedAtDesc(String workspace);
 }

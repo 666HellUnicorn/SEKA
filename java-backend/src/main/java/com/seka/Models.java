@@ -19,7 +19,8 @@ record SearchRequest(@NotBlank @Size(max = 1000) String query, @Size(max = 120) 
 record QueryRequest(@NotBlank @Size(max = 2000) String question, @Size(max = 120) String workspace, @Min(0) int topK) {}
 record AgentRequest(@NotBlank @Size(max = 2000) String task, @Size(max = 120) String workspace, @Min(0) int topK) {}
 record FeedbackRequest(@Size(max = 120) String qaId, @NotBlank @Size(max = 2000) String question,
-                       @NotBlank @Size(max = 4000) String answer, @NotBlank @Size(max = 40) String feedbackType,
+                       @NotBlank @Size(max = 4000) String answer, @Size(max = 120) String workspace,
+                       @NotBlank @Size(max = 40) String feedbackType,
                        @Size(max = 2000) String comment) {}
 record FeedbackResolveRequest(@NotBlank @Size(max = 4000) String resolution) {}
 record DocumentMetadataRequest(@Size(max = 200) String title, @Size(max = 120) String workspace,
@@ -46,7 +47,7 @@ record CitationSource(int citationIndex, String chunkId, String documentId, Stri
                       String snippet) {}
 record SearchResult(String query, String workspace, List<CitationSource> results) {}
 record QueryResult(String qaId, String question, String answer, String model, List<CitationSource> sources) {}
-record FeedbackItem(String id, String qaId, String question, String answer, String feedbackType, String comment,
+record FeedbackItem(String id, String qaId, String question, String answer, String workspace, String feedbackType, String comment,
                     String status, String resolution, String resolvedBy, String resolvedAt, String createdAt) {}
 record WorkspaceSummary(String name, int documentCount, int chunkCount) {}
 record AgentToolCall(String id, String toolName, Map<String, Object> input, String outputSummary, String status,
