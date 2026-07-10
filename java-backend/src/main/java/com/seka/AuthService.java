@@ -1,5 +1,7 @@
 package com.seka;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,15 +17,17 @@ class AuthService {
   private final UserRepository users;
   private final SessionRepository sessions;
   private final AuditLogRepository auditLogs;
+  private final ObjectMapper objectMapper;
   private final String adminUsername;
   private final String adminPassword;
 
-  AuthService(UserRepository users, SessionRepository sessions, AuditLogRepository auditLogs,
+  AuthService(UserRepository users, SessionRepository sessions, AuditLogRepository auditLogs, ObjectMapper objectMapper,
               @Value("${seka.admin.username}") String adminUsername,
               @Value("${seka.admin.password}") String adminPassword) {
     this.users = users;
     this.sessions = sessions;
     this.auditLogs = auditLogs;
+    this.objectMapper = objectMapper;
     this.adminUsername = adminUsername;
     this.adminPassword = adminPassword;
     bootstrap();
@@ -132,12 +136,12 @@ class AuthService {
 
   List<AuditLogItem> auditLogs() {
     return auditLogs.findTop200ByOrderByCreatedAtDesc().stream().map(row ->
-        new AuditLogItem(row.id, row.userId, row.username, row.action, row.resourceType, row.resourceId, Map.of("detail", row.detail), row.createdAt)
+        new AuditLogItem(row.id, row.userId, row.username, row.action, row.resourceType, row.resourceId, parseDetail(row.detail), row.createdAt)
     ).toList();
   }
 
   void audit(PublicUser user, String action, String resourceType, String resourceId, Map<String, Object> detail) {
-    auditLogs.save(new AuditLogEntity(id(), user == null ? "" : user.id(), user == null ? "" : user.username(), action, resourceType, resourceId, String.valueOf(detail), now()));
+    auditLogs.save(new AuditLogEntity(id(), user == null ? "" : user.id(), user == null ? "" : user.username(), action, resourceType, resourceId, toJson(detail), now()));
   }
 
   private PublicUser toPublic(UserEntity user) {
@@ -147,6 +151,23 @@ class AuthService {
   static List<String> normalizeWorkspaces(String value) { return split(value).stream().filter(item -> !"all".equals(item)).distinct().limit(50).toList(); }
   private static List<String> split(String value) { return value == null || value.isBlank() ? List.of() : Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isBlank()).toList(); }
   private static String join(List<String> value) { return String.join(",", value); }
+
+  private String toJson(Map<String, Object> detail) {
+    try {
+      return objectMapper.writeValueAsString(detail == null ? Map.of() : detail);
+    } catch (Exception error) {
+      throw new IllegalStateException("审计日志序列化失败", error);
+    }
+  }
+
+  private Map<String, Object> parseDetail(String detail) {
+    if (detail == null || detail.isBlank()) return Map.of();
+    try {
+      return objectMapper.readValue(detail, new TypeReference<>() {});
+    } catch (Exception error) {
+      return Map.of("raw", detail);
+    }
+  }
 
   private static String hash(String password, String salt) {
     try {

@@ -157,6 +157,10 @@ class SekaJavaApiIntegrationTest {
     assertThat(logs).anyMatch(log -> "document.update_metadata".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "feedback.resolve".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "document.delete".equals(log.get("action")));
+    Map<String, Object> updateLog = logs.stream().filter(log -> "document.update_metadata".equals(log.get("action"))).findFirst().orElseThrow();
+    Map<String, Object> updateLogDetail = (Map<String, Object>) updateLog.get("detail");
+    assertThat(updateLogDetail).containsEntry("workspace", "resume").containsEntry("title", "Java Resume Knowledge");
+    assertThat(updateLogDetail).doesNotContainKey("detail").doesNotContainKey("raw");
 
     ResponseEntity<String> report = getText(base + "/api/export/markdown?workspace=resume", adminToken);
     assertThat(report.getStatusCode()).isEqualTo(HttpStatus.OK);

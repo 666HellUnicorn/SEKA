@@ -274,6 +274,10 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 - `document.update_metadata`
 - `document.delete`
 
+面试讲法：
+
+> 审计日志的 detail 不是简单字符串拼接，而是 JSON 结构化存储和返回。例如文档元数据更新会记录 workspace、title 等字段，后续可以继续接入审计检索、风险告警或管理后台筛选。
+
 ## 12. 简历描述
 
 可以写成：
