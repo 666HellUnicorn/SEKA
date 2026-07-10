@@ -15,6 +15,28 @@ mvn spring-boot:run
 
 完整面试演示脚本见：[docs/JAVA_BACKEND_DEMO.md](../docs/JAVA_BACKEND_DEMO.md)。
 
+## Docker 一键启动
+
+```powershell
+cd java-backend
+docker compose up --build
+```
+
+默认地址：
+
+```text
+http://127.0.0.1:8865
+```
+
+容器会通过 `/actuator/health` 做健康检查，并把 H2 数据持久化到 `seka-java-data` volume。
+
+生产或演示时建议覆盖默认管理员密码：
+
+```powershell
+$env:SEKA_ADMIN_PASSWORD="change-me-please"
+docker compose up --build
+```
+
 ## 当前版本定位
 
 这个版本复刻 TypeScript 后端的核心业务，并升级为 Java 常见企业后端结构：
@@ -49,6 +71,7 @@ java-backend/data-java/seka-java.mv.db
 - OpenAPI / Swagger UI 接口文档
 - Actuator 健康检查与基础运行指标
 - Bean Validation 请求参数校验与统一 400 错误响应
+- Dockerfile 与 docker-compose 一键启动
 
 ## 主要接口
 
@@ -123,7 +146,8 @@ http://127.0.0.1:8865/actuator/metrics
 9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
 10. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
 11. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
-12. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
+12. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
+13. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 

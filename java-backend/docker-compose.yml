@@ -1,0 +1,22 @@
+services:
+  seka-java:
+    build: .
+    container_name: seka-java
+    ports:
+      - "8865:8865"
+    environment:
+      SEKA_ADMIN_USERNAME: admin
+      SEKA_ADMIN_PASSWORD: change-me-please
+      SEKA_JAVA_DATA_DIR: /data
+    volumes:
+      - seka-java-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8865/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  seka-java-data:

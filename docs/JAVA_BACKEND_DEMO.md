@@ -21,6 +21,17 @@ http://127.0.0.1:8865
 admin / admin123
 ```
 
+也可以用 Docker 一键启动：
+
+```powershell
+cd java-backend
+docker compose up --build
+```
+
+面试讲法：
+
+> Java 后端提供独立 Dockerfile 和 docker-compose，容器启动后通过 `/actuator/health` 做健康检查，H2 数据通过 volume 持久化。这样面试或录屏时可以直接演示“一条命令启动后端服务”。
+
 ## 2. 打开 Swagger UI
 
 ```text
@@ -267,7 +278,7 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查和 Bean Validation 参数校验，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
 
 ## 13. 面试回答模板
 
