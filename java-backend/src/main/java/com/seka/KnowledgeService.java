@@ -67,6 +67,32 @@ class KnowledgeService {
   }
 
   @Transactional
+  ReindexResult replaceDocumentContent(String id, MultipartFile file) throws IOException {
+    DocumentEntity doc = findDocument(id);
+    int oldChunkCount = doc.chunkCount;
+    String oldFilePath = doc.filePath;
+    String filename = StringUtils.cleanPath(Objects.requireNonNullElse(file.getOriginalFilename(), doc.filename == null || doc.filename.isBlank() ? "upload.txt" : doc.filename));
+    Path target = dataDir.resolve("uploads").resolve(id + "-" + now().replace(":", "").replace(".", "") + "-" + filename);
+    file.transferTo(target);
+    String text = Files.readString(target, StandardCharsets.UTF_8);
+    List<ChunkEntity> madeChunks = chunk(id, text);
+    chunks.deleteByDocumentId(id);
+    chunks.saveAll(madeChunks);
+    doc.filename = filename;
+    doc.filePath = target.toString();
+    doc.sizeBytes = file.getSize();
+    doc.summary = text.substring(0, Math.min(300, text.length()));
+    doc.chunkCount = madeChunks.size();
+    doc.status = "ready";
+    doc.updatedAt = now();
+    documents.save(doc);
+    if (oldFilePath != null && !oldFilePath.isBlank() && !oldFilePath.equals(target.toString())) {
+      try { Files.deleteIfExists(Path.of(oldFilePath)); } catch (IOException ignored) {}
+    }
+    return new ReindexResult(toDocument(doc), oldChunkCount, madeChunks.size(), filename);
+  }
+
+  @Transactional
   void deleteDocument(String id) {
     DocumentEntity doc = findDocument(id);
     chunks.deleteByDocumentId(id);

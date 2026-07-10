@@ -127,6 +127,23 @@ class ApiController {
     return Map.of("document", updated);
   }
 
+  @PutMapping(value = "/documents/{id}/content", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  Map<String, Object> replaceDocumentContent(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+      @PathVariable String id, @RequestPart("file") MultipartFile file) throws IOException {
+    AuthSession session = requireWrite(authorization);
+    KnowledgeDocument before = kb.getDocument(id);
+    requireWorkspace(session.user(), before.workspace());
+    ReindexResult result = kb.replaceDocumentContent(id, file);
+    auth.audit(session.user(), "document.reindex", "document", id, Map.of(
+        "title", result.document().title(),
+        "workspace", result.document().workspace(),
+        "filename", result.filename(),
+        "oldChunkCount", result.oldChunkCount(),
+        "newChunkCount", result.newChunkCount()
+    ));
+    return Map.of("document", result.document(), "oldChunkCount", result.oldChunkCount(), "newChunkCount", result.newChunkCount());
+  }
+
   @DeleteMapping("/documents/{id}")
   Map<String, Object> deleteDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id) {
     AuthSession session = requireWrite(authorization);

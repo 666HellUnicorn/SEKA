@@ -43,6 +43,7 @@ record AuditLogItem(String id, String userId, String username, String action, St
 record KnowledgeDocument(String id, String title, String filename, String filePath, String workspace, List<String> tags,
                          String description, String status, String summary, long sizeBytes, int chunkCount,
                          String createdAt, String updatedAt) {}
+record ReindexResult(KnowledgeDocument document, int oldChunkCount, int newChunkCount, String filename) {}
 record KnowledgeChunk(String id, String documentId, int chunkIndex, String content, Integer pageNumber,
                       String sectionTitle, int tokenCount, String createdAt) {}
 record CitationSource(int citationIndex, String chunkId, String documentId, String documentTitle, String documentFilename,

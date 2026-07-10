@@ -153,7 +153,35 @@ curl -s -X POST http://127.0.0.1:8865/api/documents \
 
 > 上传后服务端会保存原始文件、抽取文本、切分 chunk，并通过 JPA 持久化 document/chunk 元数据，为后续检索和问答提供可追溯来源。
 
-## 8. 创建 viewer 用户并限制 workspace
+## 8. 替换文档内容并重新索引
+
+```bash
+curl -s -X PUT http://127.0.0.1:8865/api/documents/{documentId}/content \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -F "file=@resume-v2.md"
+```
+
+预期：
+
+- 文档 `id` 保持不变。
+- `filename`、`summary`、`sizeBytes`、`chunkCount`、`updatedAt` 更新。
+- 旧 chunks 被删除，新文件内容被重新切分成 chunks。
+- 审计日志新增 `document.reindex`，detail 包含 `workspace`、`filename`、`oldChunkCount`、`newChunkCount`。
+
+可以立刻验证新内容可被检索：
+
+```bash
+curl -s -X POST http://127.0.0.1:8865/api/search \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"resume-v2 中的新关键词","workspace":"resume","topK":3}'
+```
+
+面试讲法：
+
+> 知识库不是一次性上传就结束，而是需要持续迭代。我增加了文档内容替换接口，保持文档主键不变，只替换文件和索引内容。实现上会先校验写权限和 workspace 权限，然后删除旧 chunks、保存新文件、重新切块、更新文档摘要和 chunkCount，并写入 `document.reindex` 审计日志。这样可以展示“知识库更新后检索结果立即变化”的闭环。
+
+## 9. 创建 viewer 用户并限制 workspace
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/users \
@@ -191,7 +219,7 @@ curl -s -X POST http://127.0.0.1:8865/api/users/{viewerId}/password \
 
 > 用户自己可以通过旧密码修改密码；管理员也可以在用户忘记密码时重置指定用户密码。重置后会清理该用户已有会话，并记录 `user.password_reset` 审计日志。
 
-## 9. 验证 workspace 隔离
+## 10. 验证 workspace 隔离
 
 viewer 查看文档：
 
@@ -239,7 +267,7 @@ HTTP/1.1 403
 
 > 这里同时验证了 RBAC 和 workspace ABAC。viewer 有 READ 权限但没有 WRITE 权限，并且非 admin 用户只能访问 allowedWorkspaces 白名单内的数据。
 
-## 10. 反馈闭环
+## 11. 反馈闭环
 
 提交反馈：
 
@@ -271,7 +299,7 @@ curl -s "http://127.0.0.1:8865/api/feedback?workspace=resume" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
-## 11. 导出 Markdown 报告
+## 12. 导出 Markdown 报告
 
 ```bash
 curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
@@ -285,7 +313,7 @@ curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
 - 摘要
 - 反馈状态
 
-## 12. 查看审计日志
+## 13. 查看审计日志
 
 ```bash
 curl -s http://127.0.0.1:8865/api/audit-logs \
@@ -309,19 +337,20 @@ curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceTy
 - `knowledge.export_markdown`
 - `feedback.resolve`
 - `document.update_metadata`
+- `document.reindex`
 - `document.delete`
 
 面试讲法：
 
 > 审计日志的 detail 不是简单字符串拼接，而是 JSON 结构化存储和返回。例如文档元数据更新会记录 workspace、title 等字段，并且接口支持按 action、username、resourceType 和 limit 过滤，后续可以继续接入审计检索、风险告警或管理后台筛选。
 
-## 13. 简历描述
+## 14. 简历描述
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、文档内容替换与重新索引、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、文档重建索引、反馈处理、导出、可观测性和错误响应链路。
 
-## 14. 面试回答模板
+## 15. 面试回答模板
 
 **Q：为什么要单独做 Java 后端？**
 
@@ -333,4 +362,4 @@ A：分两层。第一层是 RBAC，admin/editor/viewer 决定管理、写入和
 
 **Q：如何体现可迭代知识库？**
 
-A：用户可以对问答提交反馈，管理员处理后标记 resolved。报告导出会展示反馈状态，审计日志会记录处理动作。后续可以把 resolved 反馈进一步沉淀为修正知识并重新索引。
+A：我做了两层迭代能力。第一层是文档级迭代，可以替换已有文档内容并重新生成 chunks，文档 ID 不变但检索结果会立即更新。第二层是反馈级迭代，用户可以对问答提交反馈，管理员处理后标记 resolved。报告导出会展示反馈状态，审计日志会记录处理动作。后续可以把 resolved 反馈进一步沉淀为修正知识并触发重新索引。

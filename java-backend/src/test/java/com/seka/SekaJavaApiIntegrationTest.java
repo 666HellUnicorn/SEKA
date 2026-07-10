@@ -72,6 +72,26 @@ class SekaJavaApiIntegrationTest {
     Map<String, Object> updatedDocument = (Map<String, Object>) updatedDoc.getBody().get("document");
     assertThat(updatedDocument.get("title")).isEqualTo("Java Resume Knowledge");
 
+    ResponseEntity<Map> reindexed = replaceContent(base, adminToken, resumeDocId, "resume-v2.md", "# Resume V2\nJava 后端重新索引后支持 unique-reindex-signal。");
+    assertThat(reindexed.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<String, Object> reindexedDocument = (Map<String, Object>) reindexed.getBody().get("document");
+    assertThat(reindexedDocument.get("id")).isEqualTo(resumeDocId);
+    assertThat(reindexedDocument.get("filename")).isEqualTo("resume-v2.md");
+    assertThat(reindexed.getBody().get("oldChunkCount")).isEqualTo(1);
+    assertThat(reindexed.getBody().get("newChunkCount")).isEqualTo(1);
+
+    ResponseEntity<Map> reindexedChunks = get(base + "/api/documents/" + resumeDocId + "/chunks", adminToken);
+    assertThat(reindexedChunks.getStatusCode()).isEqualTo(HttpStatus.OK);
+    List<Map<String, Object>> chunks = (List<Map<String, Object>>) reindexedChunks.getBody().get("chunks");
+    assertThat(chunks).hasSize(1);
+    assertThat(String.valueOf(chunks.get(0).get("content"))).contains("unique-reindex-signal").doesNotContain("SEKA Java 支持 resume 知识空间");
+
+    ResponseEntity<Map> reindexSearch = postJson(base + "/api/search", adminToken, Map.of("query", "unique-reindex-signal", "workspace", "resume", "topK", 3));
+    assertThat(reindexSearch.getStatusCode()).isEqualTo(HttpStatus.OK);
+    List<Map<String, Object>> reindexResults = (List<Map<String, Object>>) reindexSearch.getBody().get("results");
+    assertThat(reindexResults).isNotEmpty();
+    assertThat(String.valueOf(reindexResults.get(0).get("snippet"))).contains("unique-reindex-signal");
+
     ResponseEntity<Map> created = postJson(base + "/api/users", adminToken, Map.of(
         "username", "viewer-demo",
         "password", "viewer123",
@@ -171,6 +191,7 @@ class SekaJavaApiIntegrationTest {
     assertThat(auditLogs.getStatusCode()).isEqualTo(HttpStatus.OK);
     List<Map<String, Object>> logs = (List<Map<String, Object>>) auditLogs.getBody().get("auditLogs");
     assertThat(logs).anyMatch(log -> "document.update_metadata".equals(log.get("action")));
+    assertThat(logs).anyMatch(log -> "document.reindex".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "feedback.resolve".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "document.delete".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "auth.password_change".equals(log.get("action")));
@@ -179,6 +200,9 @@ class SekaJavaApiIntegrationTest {
     Map<String, Object> updateLogDetail = (Map<String, Object>) updateLog.get("detail");
     assertThat(updateLogDetail).containsEntry("workspace", "resume").containsEntry("title", "Java Resume Knowledge");
     assertThat(updateLogDetail).doesNotContainKey("detail").doesNotContainKey("raw");
+    Map<String, Object> reindexLog = logs.stream().filter(log -> "document.reindex".equals(log.get("action"))).findFirst().orElseThrow();
+    Map<String, Object> reindexLogDetail = (Map<String, Object>) reindexLog.get("detail");
+    assertThat(reindexLogDetail).containsEntry("workspace", "resume").containsEntry("filename", "resume-v2.md");
 
     ResponseEntity<Map> filteredAuditLogs = get(base + "/api/audit-logs?action=feedback.resolve&resourceType=feedback&limit=5", adminToken);
     assertThat(filteredAuditLogs.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -217,6 +241,16 @@ class SekaJavaApiIntegrationTest {
       @Override public String getFilename() { return filename; }
     });
     return rest.exchange(base + "/api/documents", HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+  }
+
+  private ResponseEntity<Map> replaceContent(String base, String token, String documentId, String filename, String content) {
+    HttpHeaders headers = authHeaders(token);
+    headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add("file", new ByteArrayResource(content.getBytes(StandardCharsets.UTF_8)) {
+      @Override public String getFilename() { return filename; }
+    });
+    return rest.exchange(base + "/api/documents/" + documentId + "/content", HttpMethod.PUT, new HttpEntity<>(body, headers), Map.class);
   }
 
   private ResponseEntity<Map> postJson(String url, String token, Map<String, Object> body) {

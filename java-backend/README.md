@@ -66,6 +66,7 @@ java-backend/data-java/seka-java.mv.db
 - 用户反馈落库
 - 反馈处理闭环：open → resolved，记录 workspace、处理人和处理说明
 - 文档维护：修改 title / workspace / tags / description
+- 文档迭代：替换已有文档内容并重新生成 chunks，保持文档 ID 不变
 - 文档删除：删除文档、chunks 和本地上传文件
 - workspace 维度 Markdown 报告导出
 - OpenAPI / Swagger UI 接口文档
@@ -93,6 +94,7 @@ GET  /api/documents
 POST /api/documents              multipart/form-data
 GET  /api/documents/{id}
 PATCH /api/documents/{id}/metadata editor/admin
+PUT  /api/documents/{id}/content  editor/admin multipart/form-data
 DELETE /api/documents/{id}          editor/admin
 GET  /api/documents/{id}/chunks
 GET  /api/workspaces
@@ -143,15 +145,16 @@ http://127.0.0.1:8865/actuator/metrics
 3. **RBAC**：admin / editor / viewer 三类角色分别控制管理、写入和只读能力。
 4. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
 5. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
-6. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
-7. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
-8. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录，detail 以 JSON 结构化字段返回，并支持按 action / username / resourceType / limit 过滤，方便排查和二次分析。
-9. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
-10. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
-11. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
-12. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
-13. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
-14. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、修改/重置密码、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
+6. **知识迭代**：通过 `PUT /api/documents/{id}/content` 替换已有文档内容，删除旧 chunks 并重建新 chunks，文档 ID 保持不变，适合展示“知识库可持续更新”。
+7. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
+8. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
+9. **审计日志**：登录、上传、查询、导出、文档维护、文档重建索引、反馈处理都会写审计记录，detail 以 JSON 结构化字段返回，并支持按 action / username / resourceType / limit 过滤，方便排查和二次分析。
+10. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
+11. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
+12. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
+13. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
+14. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
+15. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、修改/重置密码、文档重新索引、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 
