@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
 @RestController
@@ -91,9 +92,24 @@ class ApiController {
   }
 
   @GetMapping("/documents")
-  Map<String, Object> documents(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+  Map<String, Object> documents(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+      @RequestParam(defaultValue = "all") String workspace,
+      @RequestParam(defaultValue = "") String keyword,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
     AuthSession session = requireRead(authorization);
-    return Map.of("documents", kb.listDocuments().stream().filter(document -> auth.canAccessWorkspace(session.user(), document.workspace())).toList());
+    if (!"all".equals(workspace)) requireWorkspace(session.user(), workspace);
+    Collection<String> readableWorkspaces = readableWorkspaces(session.user());
+    DocumentPage result = kb.listDocuments(workspace, keyword, page, size, readableWorkspaces);
+    return Map.of(
+        "documents", result.documents(),
+        "page", result.page(),
+        "size", result.size(),
+        "totalElements", result.totalElements(),
+        "totalPages", result.totalPages(),
+        "workspace", result.workspace(),
+        "keyword", result.keyword()
+    );
   }
 
   @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -249,6 +265,7 @@ class ApiController {
     if (authorization == null) return "";
     return authorization.replaceFirst("(?i)^Bearer\\s+", "").trim();
   }
+  private static Collection<String> readableWorkspaces(PublicUser user) { return user.role() == Role.ADMIN || user.allowedWorkspaces().isEmpty() ? null : user.allowedWorkspaces(); }
   private static String emptyToAll(String workspace) { return workspace == null || workspace.isBlank() ? "all" : workspace; }
   private static String emptyToDefault(String workspace) { return workspace == null || workspace.isBlank() ? "default" : workspace; }
 }

@@ -92,6 +92,13 @@ class SekaJavaApiIntegrationTest {
     assertThat(reindexResults).isNotEmpty();
     assertThat(String.valueOf(reindexResults.get(0).get("snippet"))).contains("unique-reindex-signal");
 
+    ResponseEntity<Map> resumePage = get(base + "/api/documents?workspace=resume&keyword=Resume&page=0&size=1", adminToken);
+    assertThat(resumePage.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(resumePage.getBody()).containsEntry("workspace", "resume").containsEntry("keyword", "Resume").containsEntry("page", 0).containsEntry("size", 1).containsEntry("totalElements", 1);
+    List<Map<String, Object>> resumePageDocuments = (List<Map<String, Object>>) resumePage.getBody().get("documents");
+    assertThat(resumePageDocuments).hasSize(1);
+    assertThat(resumePageDocuments.get(0).get("id")).isEqualTo(resumeDocId);
+
     ResponseEntity<Map> created = postJson(base + "/api/users", adminToken, Map.of(
         "username", "viewer-demo",
         "password", "viewer123",
@@ -108,9 +115,14 @@ class SekaJavaApiIntegrationTest {
     List<Map<String, Object>> documents = (List<Map<String, Object>>) docs.getBody().get("documents");
     assertThat(documents).isNotEmpty();
     assertThat(documents).allMatch(doc -> "resume".equals(doc.get("workspace")));
+    assertThat(docs.getBody()).containsEntry("workspace", "all").containsEntry("page", 0);
+    assertThat(docs.getBody().get("totalElements")).isEqualTo(documents.size());
 
     ResponseEntity<Map> deniedQuery = postJson(base + "/api/query", viewerToken, Map.of("question", "company 有什么？", "workspace", "company", "topK", 3));
     assertThat(deniedQuery.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+    ResponseEntity<Map> deniedCompanyDocuments = get(base + "/api/documents?workspace=company", viewerToken);
+    assertThat(deniedCompanyDocuments.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
     ResponseEntity<Map> deniedCompanyFeedback = get(base + "/api/feedback?workspace=company", viewerToken);
     assertThat(deniedCompanyFeedback.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);

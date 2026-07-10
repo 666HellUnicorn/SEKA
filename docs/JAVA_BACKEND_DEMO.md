@@ -153,7 +153,32 @@ curl -s -X POST http://127.0.0.1:8865/api/documents \
 
 > 上传后服务端会保存原始文件、抽取文本、切分 chunk，并通过 JPA 持久化 document/chunk 元数据，为后续检索和问答提供可追溯来源。
 
-## 8. 替换文档内容并重新索引
+## 8. 文档列表筛选与分页
+
+```bash
+curl -s "http://127.0.0.1:8865/api/documents?workspace=resume&keyword=Java&page=0&size=10" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+响应会包含：
+
+```json
+{
+  "documents": [],
+  "page": 0,
+  "size": 10,
+  "totalElements": 0,
+  "totalPages": 0,
+  "workspace": "resume",
+  "keyword": "Java"
+}
+```
+
+面试讲法：
+
+> 管理后台不是只返回全量列表。我给文档列表加了 workspace、keyword、page、size 查询参数，并且分页前会先做用户可读 workspace 过滤，保证 viewer 这种受限账号不会因为不可见数据影响 totalElements 和 totalPages。这一点可以体现我考虑了后台列表接口、权限过滤和分页元数据的一致性。
+
+## 9. 替换文档内容并重新索引
 
 ```bash
 curl -s -X PUT http://127.0.0.1:8865/api/documents/{documentId}/content \
@@ -181,7 +206,7 @@ curl -s -X POST http://127.0.0.1:8865/api/search \
 
 > 知识库不是一次性上传就结束，而是需要持续迭代。我增加了文档内容替换接口，保持文档主键不变，只替换文件和索引内容。实现上会先校验写权限和 workspace 权限，然后删除旧 chunks、保存新文件、重新切块、更新文档摘要和 chunkCount，并写入 `document.reindex` 审计日志。这样可以展示“知识库更新后检索结果立即变化”的闭环。
 
-## 9. 创建 viewer 用户并限制 workspace
+## 10. 创建 viewer 用户并限制 workspace
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/users \
@@ -219,12 +244,12 @@ curl -s -X POST http://127.0.0.1:8865/api/users/{viewerId}/password \
 
 > 用户自己可以通过旧密码修改密码；管理员也可以在用户忘记密码时重置指定用户密码。重置后会清理该用户已有会话，并记录 `user.password_reset` 审计日志。
 
-## 10. 验证 workspace 隔离
+## 11. 验证 workspace 隔离
 
 viewer 查看文档：
 
 ```bash
-curl -s http://127.0.0.1:8865/api/documents \
+curl -s "http://127.0.0.1:8865/api/documents?page=0&size=20" \
   -H "Authorization: Bearer $VIEWER_TOKEN"
 ```
 
@@ -240,6 +265,19 @@ curl -i -X POST http://127.0.0.1:8865/api/query \
   -H "Authorization: Bearer $VIEWER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"question":"company 有哪些内容？","workspace":"company","topK":3}'
+```
+
+预期：
+
+```text
+HTTP/1.1 403
+```
+
+viewer 查看 company 文档列表：
+
+```bash
+curl -i "http://127.0.0.1:8865/api/documents?workspace=company" \
+  -H "Authorization: Bearer $VIEWER_TOKEN"
 ```
 
 预期：
@@ -267,7 +305,7 @@ HTTP/1.1 403
 
 > 这里同时验证了 RBAC 和 workspace ABAC。viewer 有 READ 权限但没有 WRITE 权限，并且非 admin 用户只能访问 allowedWorkspaces 白名单内的数据。
 
-## 11. 反馈闭环
+## 12. 反馈闭环
 
 提交反馈：
 
@@ -299,7 +337,7 @@ curl -s "http://127.0.0.1:8865/api/feedback?workspace=resume" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
-## 12. 导出 Markdown 报告
+## 13. 导出 Markdown 报告
 
 ```bash
 curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
@@ -313,7 +351,7 @@ curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
 - 摘要
 - 反馈状态
 
-## 13. 查看审计日志
+## 14. 查看审计日志
 
 ```bash
 curl -s http://127.0.0.1:8865/api/audit-logs \
@@ -344,13 +382,13 @@ curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceTy
 
 > 审计日志的 detail 不是简单字符串拼接，而是 JSON 结构化存储和返回。例如文档元数据更新会记录 workspace、title 等字段，并且接口支持按 action、username、resourceType 和 limit 过滤，后续可以继续接入审计检索、风险告警或管理后台筛选。
 
-## 14. 简历描述
+## 15. 简历描述
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、文档内容替换与重新索引、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、文档重建索引、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、文档列表筛选分页、文档内容替换与重新索引、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、列表分页、用户禁用启用、文档维护、文档重建索引、反馈处理、导出、可观测性和错误响应链路。
 
-## 15. 面试回答模板
+## 16. 面试回答模板
 
 **Q：为什么要单独做 Java 后端？**
 
