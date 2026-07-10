@@ -59,6 +59,7 @@ SEKA/
 ├─ docs/
 │  ├─ DEMO.md              # 面试 / 录屏演示步骤
 │  ├─ API_EXAMPLES.md      # API 调用示例
+│  ├─ JAVA_BACKEND_DEMO.md # Java 后端单独演示脚本
 │  ├─ COMPLETION_AUDIT.md  # 目标完成度与交付审计
 │  └─ RESUME.md            # 简历 bullet 与面试话术
 ├─ src/
@@ -121,6 +122,7 @@ $env:SEKA_ADMIN_PASSWORD="更安全的密码"
 
 - [Demo Walkthrough](docs/DEMO.md)：适合面试、录屏和项目展示。
 - [API Examples](docs/API_EXAMPLES.md)：包含登录、上传、搜索、问答、Agent、反馈、用户授权和报告导出示例。
+- [Java Backend Demo](docs/JAVA_BACKEND_DEMO.md)：单独展示 Spring Boot Java 后端、权限隔离、反馈闭环和报告导出。
 - [Completion Audit](docs/COMPLETION_AUDIT.md)：对照最初目标检查已完成能力、证据和 MVP 边界。
 - [Resume Guide](docs/RESUME.md)：可直接复制到简历的项目描述、bullet 和面试讲解话术。
 

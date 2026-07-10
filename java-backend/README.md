@@ -13,6 +13,8 @@ mvn spring-boot:run
 
 默认账号：`admin / admin123`
 
+完整面试演示脚本见：[docs/JAVA_BACKEND_DEMO.md](../docs/JAVA_BACKEND_DEMO.md)。
+
 ## 当前版本定位
 
 这个版本复刻 TypeScript 后端的核心业务，并升级为 Java 常见企业后端结构：

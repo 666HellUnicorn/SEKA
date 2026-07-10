@@ -22,3 +22,22 @@ jobs:
 
       - name: Run full verification
         run: npm test
+
+  java-backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: java-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run Java backend tests
+        run: mvn test
