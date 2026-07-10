@@ -46,6 +46,7 @@ java-backend/data-java/seka-java.mv.db
 - 文档维护：修改 title / workspace / tags / description
 - 文档删除：删除文档、chunks 和本地上传文件
 - workspace 维度 Markdown 报告导出
+- OpenAPI / Swagger UI 接口文档
 
 ## 主要接口
 
@@ -78,6 +79,17 @@ GET  /api/feedback
 GET  /api/export/markdown?workspace=resume
 ```
 
+## OpenAPI / Swagger
+
+启动后可访问：
+
+```text
+http://127.0.0.1:8865/swagger-ui.html
+http://127.0.0.1:8865/v3/api-docs
+```
+
+面试展示时可以用 Swagger UI 说明接口分层、Bearer Token 授权、用户管理、文档入库、检索问答、反馈处理和报告导出链路。
+
 ## 面试展示重点
 
 这个 Java 版本可以重点讲成一个“企业知识库后端”的完整闭环：
@@ -90,7 +102,8 @@ GET  /api/export/markdown?workspace=resume
 6. **反馈闭环**：用户提交错误反馈，管理员处理后标记 resolved，并出现在报告中。
 7. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录。
 8. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
-9. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理和审计日志。
+9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
+10. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志和 OpenAPI 文档。
 
 ## H2 Console
 
@@ -114,5 +127,4 @@ jdbc:h2:file:./data-java/seka-java
 - 引入 pgvector / Milvus / Qdrant
 - Spring Security + JWT
 - Flyway 数据库迁移
-- OpenAPI / Swagger
 - Testcontainers 集成测试

@@ -31,6 +31,10 @@ class SekaJavaApiIntegrationTest {
   @Test
   void authUploadWorkspaceAndUserStatusFlow() {
     String base = "http://127.0.0.1:" + port;
+    ResponseEntity<String> openApi = rest.getForEntity(base + "/v3/api-docs", String.class);
+    assertThat(openApi.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(openApi.getBody()).contains("SEKA Java Backend API", "/api/documents", "/api/export/markdown");
+
     String adminToken = login(base, "admin", "admin123");
 
     Map<String, Object> resumeDoc = upload(base, adminToken, "resume.md", "# Resume\nSEKA Java 支持 resume 知识空间。", "resume");
