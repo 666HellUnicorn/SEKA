@@ -47,6 +47,7 @@ java-backend/data-java/seka-java.mv.db
 - 文档删除：删除文档、chunks 和本地上传文件
 - workspace 维度 Markdown 报告导出
 - OpenAPI / Swagger UI 接口文档
+- Actuator 健康检查与基础运行指标
 
 ## 主要接口
 
@@ -77,6 +78,10 @@ POST /api/feedback
 POST /api/feedback/{id}/resolve
 GET  /api/feedback
 GET  /api/export/markdown?workspace=resume
+
+GET  /actuator/health
+GET  /actuator/info
+GET  /actuator/metrics
 ```
 
 ## OpenAPI / Swagger
@@ -89,6 +94,18 @@ http://127.0.0.1:8865/v3/api-docs
 ```
 
 面试展示时可以用 Swagger UI 说明接口分层、Bearer Token 授权、用户管理、文档入库、检索问答、反馈处理和报告导出链路。
+
+## 运维健康检查
+
+启动后可访问：
+
+```text
+http://127.0.0.1:8865/actuator/health
+http://127.0.0.1:8865/actuator/info
+http://127.0.0.1:8865/actuator/metrics
+```
+
+这部分用于展示服务可观测性：健康状态、应用信息和 JVM / HTTP 等基础指标，适合在部署或 CI 中作为存活检查。
 
 ## 面试展示重点
 
@@ -103,7 +120,8 @@ http://127.0.0.1:8865/v3/api-docs
 7. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录。
 8. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
 9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
-10. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志和 OpenAPI 文档。
+10. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
+11. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档和 Actuator。
 
 ## H2 Console
 

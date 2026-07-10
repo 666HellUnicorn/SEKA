@@ -37,7 +37,19 @@ http://127.0.0.1:8865/v3/api-docs
 
 > Java 后端通过 springdoc-openapi 暴露接口文档，方便展示 REST API 分组、请求参数、响应结构和 Bearer Token 授权方式。这样项目不只是“能跑”，也具备团队联调和交付文档能力。
 
-## 3. 管理员登录
+## 3. 查看健康检查和运行指标
+
+```text
+http://127.0.0.1:8865/actuator/health
+http://127.0.0.1:8865/actuator/info
+http://127.0.0.1:8865/actuator/metrics
+```
+
+面试讲法：
+
+> 我给 Java 后端接入了 Spring Boot Actuator，只暴露 health、info、metrics 这类基础运维端点。这样本地演示、Docker 部署和 CI 都可以快速判断服务是否启动成功，也能展示 JVM、HTTP、数据库连接等基础指标。
+
+## 4. 管理员登录
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/auth/login \
@@ -57,7 +69,7 @@ PowerShell：
 $ADMIN_TOKEN = "复制登录返回的 token"
 ```
 
-## 4. 上传两个知识空间的文档
+## 5. 上传两个知识空间的文档
 
 上传 `resume` 空间：
 
@@ -87,7 +99,7 @@ curl -s -X POST http://127.0.0.1:8865/api/documents \
 
 > 上传后服务端会保存原始文件、抽取文本、切分 chunk，并通过 JPA 持久化 document/chunk 元数据，为后续检索和问答提供可追溯来源。
 
-## 5. 创建 viewer 用户并限制 workspace
+## 6. 创建 viewer 用户并限制 workspace
 
 ```bash
 curl -s -X POST http://127.0.0.1:8865/api/users \
@@ -110,7 +122,7 @@ curl -s -X POST http://127.0.0.1:8865/api/auth/login \
 export VIEWER_TOKEN="复制 viewer 登录返回的 token"
 ```
 
-## 6. 验证 workspace 隔离
+## 7. 验证 workspace 隔离
 
 viewer 查看文档：
 
@@ -158,7 +170,7 @@ HTTP/1.1 403
 
 > 这里同时验证了 RBAC 和 workspace ABAC。viewer 有 READ 权限但没有 WRITE 权限，并且非 admin 用户只能访问 allowedWorkspaces 白名单内的数据。
 
-## 7. 反馈闭环
+## 8. 反馈闭环
 
 提交反馈：
 
@@ -182,7 +194,7 @@ curl -s -X POST http://127.0.0.1:8865/api/feedback/{feedbackId}/resolve \
 
 > 反馈不是只记录“赞/踩”，而是形成 open → resolved 的状态流转，能支撑知识库持续迭代。
 
-## 8. 导出 Markdown 报告
+## 9. 导出 Markdown 报告
 
 ```bash
 curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
@@ -196,7 +208,7 @@ curl -s "http://127.0.0.1:8865/api/export/markdown?workspace=resume" \
 - 摘要
 - 反馈状态
 
-## 9. 查看审计日志
+## 10. 查看审计日志
 
 ```bash
 curl -s http://127.0.0.1:8865/api/audit-logs \
@@ -213,13 +225,13 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 - `document.update_metadata`
 - `document.delete`
 
-## 10. 简历描述
+## 11. 简历描述
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、反馈修正闭环、Markdown 报告导出和 OpenAPI/Swagger 接口文档，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理和导出链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、审计日志、反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档和 Actuator 健康检查，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出和可观测性链路。
 
-## 11. 面试回答模板
+## 12. 面试回答模板
 
 **Q：为什么要单独做 Java 后端？**
 

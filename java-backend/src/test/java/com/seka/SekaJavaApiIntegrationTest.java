@@ -31,6 +31,16 @@ class SekaJavaApiIntegrationTest {
   @Test
   void authUploadWorkspaceAndUserStatusFlow() {
     String base = "http://127.0.0.1:" + port;
+    ResponseEntity<String> actuatorHealth = rest.getForEntity(base + "/actuator/health", String.class);
+    assertThat(actuatorHealth.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(actuatorHealth.getBody()).contains("\"status\":\"UP\"");
+    ResponseEntity<String> actuatorInfo = rest.getForEntity(base + "/actuator/info", String.class);
+    assertThat(actuatorInfo.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(actuatorInfo.getBody()).contains("SEKA Java Backend");
+    ResponseEntity<String> actuatorMetrics = rest.getForEntity(base + "/actuator/metrics", String.class);
+    assertThat(actuatorMetrics.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(actuatorMetrics.getBody()).contains("jvm.memory.used");
+
     ResponseEntity<String> openApi = rest.getForEntity(base + "/v3/api-docs", String.class);
     assertThat(openApi.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(openApi.getBody()).contains("SEKA Java Backend API", "/api/documents", "/api/export/markdown");
