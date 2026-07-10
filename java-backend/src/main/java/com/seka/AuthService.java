@@ -148,6 +148,19 @@ class AuthService {
     return toPublic(user);
   }
 
+  @Transactional
+  PublicUser resetUserPassword(String userId, String newPassword, PublicUser actor) {
+    if (!hasPermission(actor, Permission.ADMIN)) throw new ApiException(403, "权限不足，需要 admin 权限");
+    UserEntity user = users.findById(userId).orElseThrow(() -> new ApiException(404, "用户不存在"));
+    String salt = randomToken(16);
+    user.salt = salt;
+    user.passwordHash = hash(newPassword, salt);
+    users.save(user);
+    sessions.deleteByUserId(userId);
+    audit(actor, "user.password_reset", "user", user.id, Map.of("username", user.username, "role", user.role.name()));
+    return toPublic(user);
+  }
+
   List<AuditLogItem> auditLogs(String action, String username, String resourceType, int limit) {
     Specification<AuditLogEntity> spec = alwaysTrue()
         .and(contains("action", action))

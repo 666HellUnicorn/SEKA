@@ -176,6 +176,21 @@ curl -s -X POST http://127.0.0.1:8865/api/auth/login \
 export VIEWER_TOKEN="复制 viewer 登录返回的 token"
 ```
 
+管理员重置 viewer 密码：
+
+```bash
+curl -s -X POST http://127.0.0.1:8865/api/users/{viewerId}/password \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"newPassword":"viewer456"}'
+```
+
+如果执行了重置密码，后续 viewer 登录请使用 `viewer456` 重新获取 `VIEWER_TOKEN`。
+
+面试讲法：
+
+> 用户自己可以通过旧密码修改密码；管理员也可以在用户忘记密码时重置指定用户密码。重置后会清理该用户已有会话，并记录 `user.password_reset` 审计日志。
+
 ## 9. 验证 workspace 隔离
 
 viewer 查看文档：
@@ -288,6 +303,7 @@ curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceTy
 
 - `auth.login`
 - `auth.password_change`
+- `user.password_reset`
 - `document.upload`
 - `knowledge.query`
 - `knowledge.export_markdown`
@@ -303,7 +319,7 @@ curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceTy
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、用户禁用启用、文档维护、反馈处理、导出、可观测性和错误响应链路。
 
 ## 14. 面试回答模板
 

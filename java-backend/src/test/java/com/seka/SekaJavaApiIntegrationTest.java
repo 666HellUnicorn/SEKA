@@ -119,6 +119,14 @@ class SekaJavaApiIntegrationTest {
     assertThat(oldPasswordLogin.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     viewerToken = login(base, "viewer-demo", "viewer456");
 
+    ResponseEntity<Map> invalidResetPassword = postJson(base + "/api/users/" + viewerId + "/password", adminToken, Map.of("newPassword", "123"));
+    assertThat(invalidResetPassword.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    ResponseEntity<Map> resetPassword = postJson(base + "/api/users/" + viewerId + "/password", adminToken, Map.of("newPassword", "viewer789"));
+    assertThat(resetPassword.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ResponseEntity<Map> changedPasswordLogin = rest.postForEntity(base + "/api/auth/login", Map.of("username", "viewer-demo", "password", "viewer456"), Map.class);
+    assertThat(changedPasswordLogin.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    viewerToken = login(base, "viewer-demo", "viewer789");
+
     ResponseEntity<Map> feedback = postJson(base + "/api/feedback", adminToken, Map.of(
         "qaId", "qa-demo",
         "question", "resume 项目亮点是什么？",
@@ -166,6 +174,7 @@ class SekaJavaApiIntegrationTest {
     assertThat(logs).anyMatch(log -> "feedback.resolve".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "document.delete".equals(log.get("action")));
     assertThat(logs).anyMatch(log -> "auth.password_change".equals(log.get("action")));
+    assertThat(logs).anyMatch(log -> "user.password_reset".equals(log.get("action")));
     Map<String, Object> updateLog = logs.stream().filter(log -> "document.update_metadata".equals(log.get("action"))).findFirst().orElseThrow();
     Map<String, Object> updateLogDetail = (Map<String, Object>) updateLog.get("detail");
     assertThat(updateLogDetail).containsEntry("workspace", "resume").containsEntry("title", "Java Resume Knowledge");

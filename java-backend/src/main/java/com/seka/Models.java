@@ -17,6 +17,7 @@ record CreateUserRequest(@NotBlank @Size(max = 80) String username, @NotBlank @S
                          @NotBlank @Size(max = 20) String role, @Size(max = 2000) String allowedWorkspaces) {}
 record UserStatusRequest(boolean isActive) {}
 record WorkspaceAuthRequest(@Size(max = 2000) String allowedWorkspaces) {}
+record ResetPasswordRequest(@NotBlank @Size(min = 6, max = 120) String newPassword) {}
 record SearchRequest(@NotBlank @Size(max = 1000) String query, @Size(max = 120) String workspace, @Min(0) int topK) {}
 record QueryRequest(@NotBlank @Size(max = 2000) String question, @Size(max = 120) String workspace, @Min(0) int topK) {}
 record AgentRequest(@NotBlank @Size(max = 2000) String task, @Size(max = 120) String workspace, @Min(0) int topK) {}

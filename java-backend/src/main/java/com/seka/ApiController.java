@@ -74,6 +74,12 @@ class ApiController {
     return Map.of("user", auth.setUserWorkspaces(id, request.allowedWorkspaces(), session.user()));
   }
 
+  @PostMapping("/users/{id}/password")
+  Map<String, Object> resetUserPassword(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @Valid @RequestBody ResetPasswordRequest request) {
+    AuthSession session = requireAdmin(authorization);
+    return Map.of("user", auth.resetUserPassword(id, request.newPassword(), session.user()));
+  }
+
   @GetMapping("/audit-logs")
   Map<String, Object> auditLogs(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
       @RequestParam(defaultValue = "") String action,

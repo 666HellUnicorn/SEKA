@@ -85,6 +85,7 @@ GET  /api/users                  admin
 POST /api/users                  admin
 POST /api/users/{id}/status      admin
 POST /api/users/{id}/workspaces  admin
+POST /api/users/{id}/password    admin
 GET  /api/audit-logs             admin
 GET  /api/audit-logs?action=feedback.resolve&resourceType=feedback&limit=50 admin
 
@@ -138,7 +139,7 @@ http://127.0.0.1:8865/actuator/metrics
 这个 Java 版本可以重点讲成一个“企业知识库后端”的完整闭环：
 
 1. **认证授权**：登录后签发 Bearer Token，会话持久化到 DB。
-2. **账号安全**：用户可修改自己的密码，旧密码校验失败会拒绝，并记录 `auth.password_change` 审计日志。
+2. **账号安全**：用户可修改自己的密码，管理员可重置指定用户密码，相关操作会记录 `auth.password_change` / `user.password_reset` 审计日志。
 3. **RBAC**：admin / editor / viewer 三类角色分别控制管理、写入和只读能力。
 4. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
 5. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
@@ -150,7 +151,7 @@ http://127.0.0.1:8865/actuator/metrics
 11. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
 12. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
 13. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
-14. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、修改密码、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
+14. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、修改/重置密码、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 
