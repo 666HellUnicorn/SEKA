@@ -96,11 +96,13 @@ class ApiController {
       @RequestParam(defaultValue = "all") String workspace,
       @RequestParam(defaultValue = "") String keyword,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(defaultValue = "updatedAt") String sortBy,
+      @RequestParam(defaultValue = "desc") String sortDir) {
     AuthSession session = requireRead(authorization);
     if (!"all".equals(workspace)) requireWorkspace(session.user(), workspace);
     Collection<String> readableWorkspaces = readableWorkspaces(session.user());
-    DocumentPage result = kb.listDocuments(workspace, keyword, page, size, readableWorkspaces);
+    DocumentPage result = kb.listDocuments(workspace, keyword, page, size, sortBy, sortDir, readableWorkspaces);
     return Map.of(
         "documents", result.documents(),
         "page", result.page(),
@@ -108,7 +110,9 @@ class ApiController {
         "totalElements", result.totalElements(),
         "totalPages", result.totalPages(),
         "workspace", result.workspace(),
-        "keyword", result.keyword()
+        "keyword", result.keyword(),
+        "sortBy", result.sortBy(),
+        "sortDir", result.sortDir()
     );
   }
 

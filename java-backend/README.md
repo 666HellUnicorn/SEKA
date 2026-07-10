@@ -59,7 +59,7 @@ java-backend/data-java/seka-java.mv.db
 - 用户启用 / 禁用
 - 审计日志落库，detail 使用 JSON 结构化存储
 - 文档上传与本地文件保存
-- 文档列表按 workspace / keyword 筛选，并返回分页元数据
+- 文档列表按 workspace / keyword 筛选，支持白名单字段排序，并返回分页元数据
 - 文档切块与 chunk 持久化
 - 关键词检索
 - 本地提取式 RAG 问答
@@ -91,7 +91,7 @@ POST /api/users/{id}/password    admin
 GET  /api/audit-logs             admin
 GET  /api/audit-logs?action=feedback.resolve&resourceType=feedback&limit=50 admin
 
-GET  /api/documents?workspace=resume&keyword=java&page=0&size=20
+GET  /api/documents?workspace=resume&keyword=java&page=0&size=20&sortBy=updatedAt&sortDir=desc
 POST /api/documents              multipart/form-data
 GET  /api/documents/{id}
 PATCH /api/documents/{id}/metadata editor/admin
@@ -146,7 +146,7 @@ http://127.0.0.1:8865/actuator/metrics
 3. **RBAC**：admin / editor / viewer 三类角色分别控制管理、写入和只读能力。
 4. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
 5. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
-6. **后台列表能力**：文档列表支持 workspace、keyword、page、size 参数，分页前先按用户可读空间过滤，避免越权数据影响总数。
+6. **后台列表能力**：文档列表支持 workspace、keyword、page、size、sortBy、sortDir 参数，分页前先按用户可读空间过滤，避免越权数据影响总数；排序字段使用白名单，避免任意字段输入造成不可控行为。
 7. **知识迭代**：通过 `PUT /api/documents/{id}/content` 替换已有文档内容，删除旧 chunks 并重建新 chunks，文档 ID 保持不变，适合展示“知识库可持续更新”。
 8. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
 9. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
@@ -156,7 +156,7 @@ http://127.0.0.1:8865/actuator/metrics
 13. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
 14. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
 15. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
-16. **集成测试**：覆盖 viewer 隔离、文档筛选分页、禁止上传、禁用启用用户、修改/重置密码、文档重新索引、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
+16. **集成测试**：覆盖 viewer 隔离、文档筛选/排序/分页、禁止上传、禁用启用用户、修改/重置密码、文档重新索引、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 

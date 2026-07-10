@@ -50,20 +50,23 @@ class KnowledgeService {
     return documents.findAllByOrderByCreatedAtDesc().stream().map(this::toDocument).toList();
   }
 
-  DocumentPage listDocuments(String workspace, String keyword, int page, int size, Collection<String> readableWorkspaces) {
+  DocumentPage listDocuments(String workspace, String keyword, int page, int size, String sortBy, String sortDir, Collection<String> readableWorkspaces) {
     String scope = normalizeScope(workspace);
     String q = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
     int safePage = Math.max(0, page);
     int safeSize = Math.min(Math.max(1, size <= 0 ? 20 : size), 100);
+    String safeSortBy = normalizeDocumentSortBy(sortBy);
+    String safeSortDir = normalizeSortDir(sortDir);
     List<KnowledgeDocument> matched = listDocuments().stream()
         .filter(doc -> "all".equals(scope) || doc.workspace().equals(scope))
         .filter(doc -> readableWorkspaces == null || readableWorkspaces.contains(doc.workspace()))
         .filter(doc -> q.isBlank() || documentMatches(doc, q))
+        .sorted(documentComparator(safeSortBy, safeSortDir))
         .toList();
     int from = Math.min(safePage * safeSize, matched.size());
     int to = Math.min(from + safeSize, matched.size());
     int totalPages = matched.isEmpty() ? 0 : (int) Math.ceil((double) matched.size() / safeSize);
-    return new DocumentPage(matched.subList(from, to), safePage, safeSize, matched.size(), totalPages, scope, keyword == null ? "" : keyword.trim());
+    return new DocumentPage(matched.subList(from, to), safePage, safeSize, matched.size(), totalPages, scope, keyword == null ? "" : keyword.trim(), safeSortBy, safeSortDir);
   }
 
   KnowledgeDocument getDocument(String id) {
@@ -253,6 +256,26 @@ class KnowledgeService {
 
   private static List<CitationSource> renumber(List<CitationSource> sources) { List<CitationSource> output = new ArrayList<>(); for (int i = 0; i < sources.size(); i++) { CitationSource s = sources.get(i); output.add(new CitationSource(i + 1, s.chunkId(), s.documentId(), s.documentTitle(), s.documentFilename(), s.pageNumber(), s.sectionTitle(), s.score(), s.keywordScore(), s.vectorScore(), s.snippet())); } return output; }
   private static boolean documentMatches(KnowledgeDocument doc, String keyword) { return (doc.title() + " " + doc.filename() + " " + doc.workspace() + " " + String.join(" ", doc.tags()) + " " + doc.description() + " " + doc.summary()).toLowerCase(Locale.ROOT).contains(keyword); }
+  private static Comparator<KnowledgeDocument> documentComparator(String sortBy, String sortDir) {
+    Comparator<KnowledgeDocument> comparator = switch (sortBy) {
+      case "title" -> Comparator.comparing(KnowledgeDocument::title, String.CASE_INSENSITIVE_ORDER);
+      case "workspace" -> Comparator.comparing(KnowledgeDocument::workspace, String.CASE_INSENSITIVE_ORDER);
+      case "filename" -> Comparator.comparing(KnowledgeDocument::filename, String.CASE_INSENSITIVE_ORDER);
+      case "chunkCount" -> Comparator.comparingInt(KnowledgeDocument::chunkCount);
+      case "sizeBytes" -> Comparator.comparingLong(KnowledgeDocument::sizeBytes);
+      case "createdAt" -> Comparator.comparing(KnowledgeDocument::createdAt);
+      default -> Comparator.comparing(KnowledgeDocument::updatedAt);
+    };
+    return "asc".equals(sortDir) ? comparator : comparator.reversed();
+  }
+  private static String normalizeDocumentSortBy(String value) {
+    if (value == null || value.isBlank()) return "updatedAt";
+    return switch (value.trim()) {
+      case "createdAt", "updatedAt", "title", "workspace", "filename", "chunkCount", "sizeBytes" -> value.trim();
+      default -> "updatedAt";
+    };
+  }
+  private static String normalizeSortDir(String value) { return "asc".equalsIgnoreCase(value == null ? "" : value.trim()) ? "asc" : "desc"; }
   private static List<ChunkEntity> chunk(String documentId, String text) { List<ChunkEntity> result = new ArrayList<>(); int size = 700; for (int start = 0, index = 0; start < text.length(); start += size, index++) { String content = text.substring(start, Math.min(start + size, text.length())).trim(); if (!content.isBlank()) result.add(new ChunkEntity(id(), documentId, index, content, index + 1, "", content.length(), now())); } return result; }
   private static Set<String> tokens(String value) { if (value == null) return Set.of(); return Pattern.compile("[\\p{IsHan}A-Za-z0-9_]+").matcher(value.toLowerCase(Locale.ROOT)).results().map(match -> match.group()).filter(token -> token.length() >= 2).collect(Collectors.toSet()); }
   private static String normalizeTags(String value) { return String.join(",", split(value).stream().distinct().toList()); }

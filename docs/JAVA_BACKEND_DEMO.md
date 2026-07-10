@@ -153,10 +153,10 @@ curl -s -X POST http://127.0.0.1:8865/api/documents \
 
 > 上传后服务端会保存原始文件、抽取文本、切分 chunk，并通过 JPA 持久化 document/chunk 元数据，为后续检索和问答提供可追溯来源。
 
-## 8. 文档列表筛选与分页
+## 8. 文档列表筛选、排序与分页
 
 ```bash
-curl -s "http://127.0.0.1:8865/api/documents?workspace=resume&keyword=Java&page=0&size=10" \
+curl -s "http://127.0.0.1:8865/api/documents?workspace=resume&keyword=Java&page=0&size=10&sortBy=updatedAt&sortDir=desc" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
@@ -170,13 +170,15 @@ curl -s "http://127.0.0.1:8865/api/documents?workspace=resume&keyword=Java&page=
   "totalElements": 0,
   "totalPages": 0,
   "workspace": "resume",
-  "keyword": "Java"
+  "keyword": "Java",
+  "sortBy": "updatedAt",
+  "sortDir": "desc"
 }
 ```
 
 面试讲法：
 
-> 管理后台不是只返回全量列表。我给文档列表加了 workspace、keyword、page、size 查询参数，并且分页前会先做用户可读 workspace 过滤，保证 viewer 这种受限账号不会因为不可见数据影响 totalElements 和 totalPages。这一点可以体现我考虑了后台列表接口、权限过滤和分页元数据的一致性。
+> 管理后台不是只返回全量列表。我给文档列表加了 workspace、keyword、page、size、sortBy、sortDir 查询参数，并且分页前会先做用户可读 workspace 过滤，保证 viewer 这种受限账号不会因为不可见数据影响 totalElements 和 totalPages。排序字段也做了白名单限制，只允许 createdAt、updatedAt、title、workspace、filename、chunkCount、sizeBytes，避免任意字段输入造成不可控行为。这一点可以体现我考虑了后台列表接口、权限过滤、分页元数据和输入安全。
 
 ## 9. 替换文档内容并重新索引
 
@@ -386,7 +388,7 @@ curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceTy
 
 可以写成：
 
-> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、文档列表筛选分页、文档内容替换与重新索引、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、列表分页、用户禁用启用、文档维护、文档重建索引、反馈处理、导出、可观测性和错误响应链路。
+> 独立实现 SEKA Java 后端版本，基于 Spring Boot 3、Java 21、Spring Data JPA 和 H2 构建本地知识库 Agent 服务，支持文档上传切块、文档列表筛选/排序/分页、文档内容替换与重新索引、检索问答、workspace 数据隔离、admin/editor/viewer RBAC、账号修改/重置密码、审计日志、按空间隔离的反馈修正闭环、Markdown 报告导出、OpenAPI/Swagger 接口文档、Actuator 健康检查、Bean Validation 参数校验和 Docker 容器化交付，并通过集成测试覆盖权限隔离、列表分页、用户禁用启用、文档维护、文档重建索引、反馈处理、导出、可观测性和错误响应链路。
 
 ## 16. 面试回答模板
 

@@ -99,6 +99,16 @@ class SekaJavaApiIntegrationTest {
     assertThat(resumePageDocuments).hasSize(1);
     assertThat(resumePageDocuments.get(0).get("id")).isEqualTo(resumeDocId);
 
+    ResponseEntity<Map> titleAscPage = get(base + "/api/documents?sortBy=title&sortDir=asc&page=0&size=10", adminToken);
+    assertThat(titleAscPage.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(titleAscPage.getBody()).containsEntry("sortBy", "title").containsEntry("sortDir", "asc");
+    List<Map<String, Object>> titleAscDocuments = (List<Map<String, Object>>) titleAscPage.getBody().get("documents");
+    assertThat(titleAscDocuments).extracting(doc -> String.valueOf(doc.get("title"))).containsExactly("company.md", "Java Resume Knowledge");
+
+    ResponseEntity<Map> fallbackSortPage = get(base + "/api/documents?sortBy=unsafeField&sortDir=sideways&page=0&size=10", adminToken);
+    assertThat(fallbackSortPage.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(fallbackSortPage.getBody()).containsEntry("sortBy", "updatedAt").containsEntry("sortDir", "desc");
+
     ResponseEntity<Map> created = postJson(base + "/api/users", adminToken, Map.of(
         "username", "viewer-demo",
         "password", "viewer123",
