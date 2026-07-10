@@ -42,6 +42,13 @@ class ApiController {
     return Map.of("ok", true);
   }
 
+  @PostMapping("/auth/password")
+  Map<String, Object> changePassword(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @Valid @RequestBody ChangePasswordRequest request) {
+    AuthSession session = requireRead(authorization);
+    auth.changePassword(session.user(), request);
+    return Map.of("ok", true);
+  }
+
   @GetMapping("/users")
   Map<String, Object> users(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
     requireAdmin(authorization);

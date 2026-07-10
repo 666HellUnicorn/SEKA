@@ -79,6 +79,7 @@ java-backend/data-java/seka-java.mv.db
 POST /api/auth/login
 GET  /api/auth/me
 POST /api/auth/logout
+POST /api/auth/password
 
 GET  /api/users                  admin
 POST /api/users                  admin
@@ -137,18 +138,19 @@ http://127.0.0.1:8865/actuator/metrics
 这个 Java 版本可以重点讲成一个“企业知识库后端”的完整闭环：
 
 1. **认证授权**：登录后签发 Bearer Token，会话持久化到 DB。
-2. **RBAC**：admin / editor / viewer 三类角色分别控制管理、写入和只读能力。
-3. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
-4. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
-5. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
-6. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
-7. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录，detail 以 JSON 结构化字段返回，并支持按 action / username / resourceType / limit 过滤，方便排查和二次分析。
-8. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
-9. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
-10. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
-11. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
-12. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
-13. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
+2. **账号安全**：用户可修改自己的密码，旧密码校验失败会拒绝，并记录 `auth.password_change` 审计日志。
+3. **RBAC**：admin / editor / viewer 三类角色分别控制管理、写入和只读能力。
+4. **空间隔离**：非 admin 账号通过 `allowedWorkspaces` 限制可访问的知识空间。
+5. **知识入库**：文档上传后保存原文件、抽取文本、切 chunk、落库。
+6. **可解释检索**：检索和问答都会返回来源 chunk，方便追溯答案依据。
+7. **反馈闭环**：用户提交错误反馈时记录 workspace，管理员处理后标记 resolved，空间报告只展示对应空间反馈。
+8. **审计日志**：登录、上传、查询、导出、文档维护、反馈处理都会写审计记录，detail 以 JSON 结构化字段返回，并支持按 action / username / resourceType / limit 过滤，方便排查和二次分析。
+9. **报告导出**：按 workspace 导出 Markdown，包含空间统计、文档清单、摘要、反馈状态。
+10. **OpenAPI 文档**：通过 Swagger UI 提供可交互接口文档，方便演示和联调。
+11. **服务可观测性**：通过 Actuator 暴露健康检查、应用信息和基础运行指标。
+12. **参数校验**：通过 Bean Validation 约束登录、创建用户、检索问答、反馈等请求，统一返回 `validationErrors`。
+13. **容器化交付**：提供 Dockerfile 和独立 docker-compose，支持一键启动、volume 持久化和健康检查。
+14. **集成测试**：覆盖 viewer 隔离、禁止上传、禁用启用用户、修改密码、报告导出、反馈处理、审计日志、OpenAPI 文档、Actuator 和参数校验。
 
 ## H2 Console
 

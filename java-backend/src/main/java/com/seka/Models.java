@@ -11,6 +11,8 @@ enum Role { ADMIN, EDITOR, VIEWER }
 enum Permission { READ, WRITE, ADMIN }
 
 record LoginRequest(@NotBlank @Size(max = 80) String username, @NotBlank @Size(min = 6, max = 120) String password) {}
+record ChangePasswordRequest(@NotBlank @Size(min = 6, max = 120) String oldPassword,
+                             @NotBlank @Size(min = 6, max = 120) String newPassword) {}
 record CreateUserRequest(@NotBlank @Size(max = 80) String username, @NotBlank @Size(min = 6, max = 120) String password,
                          @NotBlank @Size(max = 20) String role, @Size(max = 2000) String allowedWorkspaces) {}
 record UserStatusRequest(boolean isActive) {}

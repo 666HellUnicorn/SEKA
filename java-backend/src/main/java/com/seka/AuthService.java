@@ -61,6 +61,17 @@ class AuthService {
     audit(user, "auth.logout", "session", token.length() > 8 ? token.substring(0, 8) : token, Map.of());
   }
 
+  @Transactional
+  void changePassword(PublicUser actor, ChangePasswordRequest request) {
+    UserEntity user = users.findById(actor.id()).orElseThrow(() -> new ApiException(404, "用户不存在"));
+    if (!Objects.equals(user.passwordHash, hash(request.oldPassword(), user.salt))) throw new ApiException(401, "旧密码不正确");
+    String salt = randomToken(16);
+    user.salt = salt;
+    user.passwordHash = hash(request.newPassword(), salt);
+    users.save(user);
+    audit(actor, "auth.password_change", "user", user.id, Map.of("username", user.username));
+  }
+
   AuthSession getSession(String token) {
     if (token == null || token.isBlank()) return null;
     Optional<SessionEntity> session = sessions.findById(token);
