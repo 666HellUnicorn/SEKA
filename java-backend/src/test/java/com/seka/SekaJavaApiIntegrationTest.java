@@ -34,8 +34,20 @@ class SekaJavaApiIntegrationTest {
     String adminToken = login(base, "admin", "admin123");
 
     Map<String, Object> resumeDoc = upload(base, adminToken, "resume.md", "# Resume\nSEKA Java 支持 resume 知识空间。", "resume");
-    upload(base, adminToken, "company.md", "# Company\nSEKA Java 支持 company 知识空间。", "company");
+    Map<String, Object> companyDoc = upload(base, adminToken, "company.md", "# Company\nSEKA Java 支持 company 知识空间。", "company");
     assertThat(resumeDoc).containsKey("document");
+    String resumeDocId = String.valueOf(((Map<String, Object>) resumeDoc.get("document")).get("id"));
+    String companyDocId = String.valueOf(((Map<String, Object>) companyDoc.get("document")).get("id"));
+
+    ResponseEntity<Map> updatedDoc = patchJson(base + "/api/documents/" + resumeDocId + "/metadata", adminToken, Map.of(
+        "title", "Java Resume Knowledge",
+        "workspace", "resume",
+        "tags", "resume,java,interview",
+        "description", "updated metadata"
+    ));
+    assertThat(updatedDoc.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<String, Object> updatedDocument = (Map<String, Object>) updatedDoc.getBody().get("document");
+    assertThat(updatedDocument.get("title")).isEqualTo("Java Resume Knowledge");
 
     ResponseEntity<Map> created = postJson(base + "/api/users", adminToken, Map.of(
         "username", "viewer-demo",
@@ -60,6 +72,9 @@ class SekaJavaApiIntegrationTest {
     ResponseEntity<Map> deniedUpload = uploadResponse(base, viewerToken, "blocked.md", "blocked", "resume");
     assertThat(deniedUpload.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
+    ResponseEntity<Map> deniedPatch = patchJson(base + "/api/documents/" + resumeDocId + "/metadata", viewerToken, Map.of("title", "blocked"));
+    assertThat(deniedPatch.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
     ResponseEntity<Map> disabled = postJson(base + "/api/users/" + viewerId + "/status", adminToken, Map.of("isActive", false));
     assertThat(disabled.getStatusCode()).isEqualTo(HttpStatus.OK);
     ResponseEntity<Map> disabledLogin = rest.postForEntity(base + "/api/auth/login", Map.of("username", "viewer-demo", "password", "viewer123"), Map.class);
@@ -69,9 +84,36 @@ class SekaJavaApiIntegrationTest {
     assertThat(enabled.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(login(base, "viewer-demo", "viewer123")).isNotBlank();
 
+    ResponseEntity<Map> feedback = postJson(base + "/api/feedback", adminToken, Map.of(
+        "qaId", "qa-demo",
+        "question", "resume 项目亮点是什么？",
+        "answer", "旧回答",
+        "feedbackType", "incorrect",
+        "comment", "需要补充权限与审计日志"
+    ));
+    assertThat(feedback.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    String feedbackId = String.valueOf(((Map<String, Object>) feedback.getBody().get("feedback")).get("id"));
+    ResponseEntity<Map> resolved = postJson(base + "/api/feedback/" + feedbackId + "/resolve", adminToken, Map.of("resolution", "已补充授权与审计日志说明"));
+    assertThat(resolved.getStatusCode()).isEqualTo(HttpStatus.OK);
+    Map<String, Object> resolvedFeedback = (Map<String, Object>) resolved.getBody().get("feedback");
+    assertThat(resolvedFeedback.get("status")).isEqualTo("resolved");
+    assertThat(resolvedFeedback.get("resolvedBy")).isEqualTo("admin");
+
+    ResponseEntity<Map> deleted = delete(base + "/api/documents/" + companyDocId, adminToken);
+    assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ResponseEntity<Map> deletedDoc = get(base + "/api/documents/" + companyDocId, adminToken);
+    assertThat(deletedDoc.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+    ResponseEntity<Map> auditLogs = get(base + "/api/audit-logs", adminToken);
+    assertThat(auditLogs.getStatusCode()).isEqualTo(HttpStatus.OK);
+    List<Map<String, Object>> logs = (List<Map<String, Object>>) auditLogs.getBody().get("auditLogs");
+    assertThat(logs).anyMatch(log -> "document.update_metadata".equals(log.get("action")));
+    assertThat(logs).anyMatch(log -> "feedback.resolve".equals(log.get("action")));
+    assertThat(logs).anyMatch(log -> "document.delete".equals(log.get("action")));
+
     ResponseEntity<String> report = getText(base + "/api/export/markdown?workspace=resume", adminToken);
     assertThat(report.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(report.getBody()).contains("## 知识空间", "## 文档清单", "摘要：", "## 反馈状态");
+    assertThat(report.getBody()).contains("## 知识空间", "## 文档清单", "摘要：", "## 反馈状态", "Java Resume Knowledge", "已修正反馈：1");
   }
 
   private String login(String base, String username, String password) {
@@ -106,8 +148,18 @@ class SekaJavaApiIntegrationTest {
     return rest.exchange(url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
   }
 
+  private ResponseEntity<Map> patchJson(String url, String token, Map<String, Object> body) {
+    HttpHeaders headers = authHeaders(token);
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    return rest.exchange(url, HttpMethod.PATCH, new HttpEntity<>(body, headers), Map.class);
+  }
+
   private ResponseEntity<Map> get(String url, String token) {
     return rest.exchange(url, HttpMethod.GET, new HttpEntity<>(authHeaders(token)), Map.class);
+  }
+
+  private ResponseEntity<Map> delete(String url, String token) {
+    return rest.exchange(url, HttpMethod.DELETE, new HttpEntity<>(authHeaders(token)), Map.class);
   }
 
   private ResponseEntity<String> getText(String url, String token) {

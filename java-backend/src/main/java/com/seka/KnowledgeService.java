@@ -54,6 +54,28 @@ class KnowledgeService {
     return toDocument(findDocument(id));
   }
 
+  @Transactional
+  KnowledgeDocument updateDocumentMetadata(String id, DocumentMetadataRequest request) {
+    DocumentEntity doc = findDocument(id);
+    if (request.title() != null && !request.title().isBlank()) doc.title = request.title().trim();
+    if (request.workspace() != null && !request.workspace().isBlank()) doc.workspace = normalizeWorkspace(request.workspace());
+    if (request.tags() != null) doc.tags = normalizeTags(request.tags());
+    if (request.description() != null) doc.description = request.description().trim();
+    doc.updatedAt = now();
+    documents.save(doc);
+    return toDocument(doc);
+  }
+
+  @Transactional
+  void deleteDocument(String id) {
+    DocumentEntity doc = findDocument(id);
+    chunks.deleteByDocumentId(id);
+    documents.delete(doc);
+    if (doc.filePath != null && !doc.filePath.isBlank()) {
+      try { Files.deleteIfExists(Path.of(doc.filePath)); } catch (IOException ignored) {}
+    }
+  }
+
   List<KnowledgeChunk> listChunks(String documentId) {
     return chunks.findByDocumentIdOrderByChunkIndexAsc(documentId).stream().map(this::toChunk).toList();
   }
@@ -99,6 +121,17 @@ class KnowledgeService {
 
   FeedbackItem submitFeedback(FeedbackRequest request) {
     FeedbackEntity row = new FeedbackEntity(id(), request.qaId(), request.question(), request.answer(), request.feedbackType(), request.comment(), "open", "", "", "", now());
+    feedback.save(row);
+    return toFeedback(row);
+  }
+
+  @Transactional
+  FeedbackItem resolveFeedback(String id, String resolution, PublicUser actor) {
+    FeedbackEntity row = feedback.findById(id).orElseThrow(() -> new ApiException(404, "反馈不存在"));
+    row.status = "resolved";
+    row.resolution = resolution == null || resolution.isBlank() ? "已确认并完成修正" : resolution.trim();
+    row.resolvedBy = actor.username();
+    row.resolvedAt = now();
     feedback.save(row);
     return toFeedback(row);
   }

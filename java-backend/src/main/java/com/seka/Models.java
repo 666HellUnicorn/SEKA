@@ -14,6 +14,8 @@ record SearchRequest(String query, String workspace, int topK) {}
 record QueryRequest(String question, String workspace, int topK) {}
 record AgentRequest(String task, String workspace, int topK) {}
 record FeedbackRequest(String qaId, String question, String answer, String feedbackType, String comment) {}
+record FeedbackResolveRequest(String resolution) {}
+record DocumentMetadataRequest(String title, String workspace, String tags, String description) {}
 
 record PublicUser(String id, String username, String displayName, Role role, boolean isActive,
                   List<String> allowedWorkspaces, String createdAt, String lastLoginAt) {

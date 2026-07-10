@@ -98,6 +98,27 @@ class ApiController {
     return Map.of("document", document);
   }
 
+  @PatchMapping("/documents/{id}/metadata")
+  Map<String, Object> updateDocumentMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody DocumentMetadataRequest request) {
+    AuthSession session = requireWrite(authorization);
+    KnowledgeDocument before = kb.getDocument(id);
+    requireWorkspace(session.user(), before.workspace());
+    if (request.workspace() != null && !request.workspace().isBlank()) requireWorkspace(session.user(), request.workspace());
+    KnowledgeDocument updated = kb.updateDocumentMetadata(id, request);
+    auth.audit(session.user(), "document.update_metadata", "document", updated.id(), Map.of("workspace", updated.workspace(), "title", updated.title()));
+    return Map.of("document", updated);
+  }
+
+  @DeleteMapping("/documents/{id}")
+  Map<String, Object> deleteDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id) {
+    AuthSession session = requireWrite(authorization);
+    KnowledgeDocument document = kb.getDocument(id);
+    requireWorkspace(session.user(), document.workspace());
+    kb.deleteDocument(id);
+    auth.audit(session.user(), "document.delete", "document", id, Map.of("workspace", document.workspace(), "title", document.title()));
+    return Map.of("ok", true, "deletedId", id);
+  }
+
   @GetMapping("/documents/{id}/chunks")
   Map<String, Object> chunks(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id) {
     AuthSession session = requireRead(authorization);
@@ -145,6 +166,14 @@ class ApiController {
     FeedbackItem item = kb.submitFeedback(request);
     auth.audit(session.user(), "feedback.create", "feedback", item.id(), Map.of("feedbackType", item.feedbackType()));
     return ResponseEntity.status(201).body(Map.of("feedback", item));
+  }
+
+  @PostMapping("/feedback/{id}/resolve")
+  Map<String, Object> resolveFeedback(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization, @PathVariable String id, @RequestBody FeedbackResolveRequest request) {
+    AuthSession session = requireWrite(authorization);
+    FeedbackItem item = kb.resolveFeedback(id, request.resolution(), session.user());
+    auth.audit(session.user(), "feedback.resolve", "feedback", item.id(), Map.of("status", item.status(), "resolvedBy", item.resolvedBy()));
+    return Map.of("feedback", item);
   }
 
   @GetMapping("/feedback")
