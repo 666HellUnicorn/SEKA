@@ -264,6 +264,13 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
+按动作过滤：
+
+```bash
+curl -s "http://127.0.0.1:8865/api/audit-logs?action=feedback.resolve&resourceType=feedback&limit=50" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
 重点观察：
 
 - `auth.login`
@@ -276,7 +283,7 @@ curl -s http://127.0.0.1:8865/api/audit-logs \
 
 面试讲法：
 
-> 审计日志的 detail 不是简单字符串拼接，而是 JSON 结构化存储和返回。例如文档元数据更新会记录 workspace、title 等字段，后续可以继续接入审计检索、风险告警或管理后台筛选。
+> 审计日志的 detail 不是简单字符串拼接，而是 JSON 结构化存储和返回。例如文档元数据更新会记录 workspace、title 等字段，并且接口支持按 action、username、resourceType 和 limit 过滤，后续可以继续接入审计检索、风险告警或管理后台筛选。
 
 ## 12. 简历描述
 

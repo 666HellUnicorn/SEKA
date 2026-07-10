@@ -162,6 +162,13 @@ class SekaJavaApiIntegrationTest {
     assertThat(updateLogDetail).containsEntry("workspace", "resume").containsEntry("title", "Java Resume Knowledge");
     assertThat(updateLogDetail).doesNotContainKey("detail").doesNotContainKey("raw");
 
+    ResponseEntity<Map> filteredAuditLogs = get(base + "/api/audit-logs?action=feedback.resolve&resourceType=feedback&limit=5", adminToken);
+    assertThat(filteredAuditLogs.getStatusCode()).isEqualTo(HttpStatus.OK);
+    List<Map<String, Object>> filteredLogs = (List<Map<String, Object>>) filteredAuditLogs.getBody().get("auditLogs");
+    assertThat(filteredLogs).isNotEmpty();
+    assertThat(filteredLogs).hasSizeLessThanOrEqualTo(5);
+    assertThat(filteredLogs).allMatch(log -> "feedback.resolve".equals(log.get("action")) && "feedback".equals(log.get("resourceType")));
+
     ResponseEntity<String> report = getText(base + "/api/export/markdown?workspace=resume", adminToken);
     assertThat(report.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(report.getBody()).contains("## 知识空间", "## 文档清单", "摘要：", "## 反馈状态", "Java Resume Knowledge", "已修正反馈：1");

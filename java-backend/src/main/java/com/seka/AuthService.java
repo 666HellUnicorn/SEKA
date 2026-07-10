@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -134,8 +137,13 @@ class AuthService {
     return toPublic(user);
   }
 
-  List<AuditLogItem> auditLogs() {
-    return auditLogs.findTop200ByOrderByCreatedAtDesc().stream().map(row ->
+  List<AuditLogItem> auditLogs(String action, String username, String resourceType, int limit) {
+    Specification<AuditLogEntity> spec = alwaysTrue()
+        .and(contains("action", action))
+        .and(contains("username", username))
+        .and(contains("resourceType", resourceType));
+    int safeLimit = Math.max(1, Math.min(limit <= 0 ? 200 : limit, 500));
+    return auditLogs.findAll(spec, PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt"))).stream().map(row ->
         new AuditLogItem(row.id, row.userId, row.username, row.action, row.resourceType, row.resourceId, parseDetail(row.detail), row.createdAt)
     ).toList();
   }
@@ -151,6 +159,16 @@ class AuthService {
   static List<String> normalizeWorkspaces(String value) { return split(value).stream().filter(item -> !"all".equals(item)).distinct().limit(50).toList(); }
   private static List<String> split(String value) { return value == null || value.isBlank() ? List.of() : Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isBlank()).toList(); }
   private static String join(List<String> value) { return String.join(",", value); }
+
+  private static Specification<AuditLogEntity> alwaysTrue() {
+    return (root, query, builder) -> builder.conjunction();
+  }
+
+  private static Specification<AuditLogEntity> contains(String field, String value) {
+    if (value == null || value.isBlank()) return alwaysTrue();
+    String pattern = "%" + value.trim().toLowerCase(Locale.ROOT) + "%";
+    return (root, query, builder) -> builder.like(builder.lower(root.get(field)), pattern);
+  }
 
   private String toJson(Map<String, Object> detail) {
     try {

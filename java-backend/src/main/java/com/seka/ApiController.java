@@ -68,9 +68,13 @@ class ApiController {
   }
 
   @GetMapping("/audit-logs")
-  Map<String, Object> auditLogs(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+  Map<String, Object> auditLogs(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+      @RequestParam(defaultValue = "") String action,
+      @RequestParam(defaultValue = "") String username,
+      @RequestParam(defaultValue = "") String resourceType,
+      @RequestParam(defaultValue = "200") int limit) {
     requireAdmin(authorization);
-    return Map.of("auditLogs", auth.auditLogs());
+    return Map.of("auditLogs", auth.auditLogs(action, username, resourceType, limit));
   }
 
   @GetMapping("/documents")

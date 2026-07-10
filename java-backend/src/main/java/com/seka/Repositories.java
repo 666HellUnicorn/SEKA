@@ -1,6 +1,7 @@
 package com.seka;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,7 @@ interface SessionRepository extends JpaRepository<SessionEntity, String> {
   void deleteByUserId(String userId);
 }
 
-interface AuditLogRepository extends JpaRepository<AuditLogEntity, String> {
+interface AuditLogRepository extends JpaRepository<AuditLogEntity, String>, JpaSpecificationExecutor<AuditLogEntity> {
   List<AuditLogEntity> findTop200ByOrderByCreatedAtDesc();
 }
 
