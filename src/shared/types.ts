@@ -71,6 +71,27 @@ export interface SearchResult {
   results: CitationSource[];
 }
 
+export interface AgenticSearchRequest {
+  question: string;
+  workspace?: string;
+  topK?: number;
+  maxRounds?: number;
+}
+
+export interface AgenticSearchQuery {
+  query: string;
+  terms: string[];
+  reason: string;
+}
+
+export interface AgenticSearchRound {
+  round: number;
+  strategy: string;
+  queries: AgenticSearchQuery[];
+  hitCount: number;
+  hits: CitationSource[];
+}
+
 export interface FeedbackItem {
   id: string;
   qaId: string | null;
@@ -164,6 +185,16 @@ export interface AgentRunResult {
   task: string;
   workspace: string;
   answer: string;
+  sources: CitationSource[];
+  toolCalls: AgentToolCall[];
+  createdAt: string;
+}
+
+export interface AgenticSearchResult {
+  question: string;
+  workspace: string;
+  answer: string;
+  rounds: AgenticSearchRound[];
   sources: CitationSource[];
   toolCalls: AgentToolCall[];
   createdAt: string;

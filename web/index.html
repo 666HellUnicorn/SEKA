@@ -180,6 +180,33 @@
 
         <section class="agent-card">
           <div class="panel-title-row">
+            <h2>Agentic Search + Grep</h2>
+            <span class="hint">多轮关键词规划 / grep-style 检索 / 搜索轨迹可解释</span>
+          </div>
+          <form id="agentic-search-form" class="agent-form">
+            <textarea
+              id="agentic-search-input"
+              rows="3"
+              placeholder="例如：这个项目如何体现权限隔离和审计能力？"
+              required
+            ></textarea>
+            <div class="query-actions">
+              <label>
+                Top K
+                <input id="agentic-search-topk-input" type="number" value="5" min="1" max="20" />
+              </label>
+              <label>
+                Rounds
+                <input id="agentic-search-rounds-input" type="number" value="3" min="1" max="5" />
+              </label>
+              <button type="submit">运行 Agentic Search</button>
+            </div>
+          </form>
+          <div id="agentic-search-result" class="agent-result empty">暂无 Agentic Search 结果</div>
+        </section>
+
+        <section class="agent-card">
+          <div class="panel-title-row">
             <h2>Agent 工作台</h2>
             <span class="hint">自动识别：问答 / 对比 / 缺口分析 / 网页导入 / 总结</span>
           </div>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import type {
+  AgenticSearchResult,
   CitationSource,
   FeedbackItem,
   FeedbackType,
@@ -9,6 +10,7 @@ import type {
   QueryResult,
   ScoredChunk,
 } from "../shared/types.ts";
+import { AgenticSearchService } from "./agentic-search.ts";
 import { ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES, UPLOAD_DIR } from "./config.ts";
 import { Database } from "./db.ts";
 import { generateAnswer } from "./llm.ts";
@@ -20,6 +22,7 @@ import { fetchWebPage } from "./web-source.ts";
 
 export class KnowledgeBase {
   private readonly retriever = new HybridRetriever();
+  private readonly agenticSearchService = new AgenticSearchService();
   private readonly db: Database;
 
   constructor(db = new Database()) {
@@ -191,6 +194,22 @@ export class KnowledgeBase {
       workspace: workspace || "all",
       results: retrieved.map((chunk, index) => this.toCitation(chunk, index + 1)),
     };
+  }
+
+  agenticSearch(
+    question: string,
+    options: { topK?: number; maxRounds?: number; workspace?: string } = {},
+  ): AgenticSearchResult {
+    const normalizedQuestion = question.trim();
+    if (!normalizedQuestion) throw new Error("问题不能为空");
+    const chunks =
+      options.workspace && options.workspace !== "all" ? this.db.chunksByWorkspace(options.workspace) : this.db.allChunks();
+    return this.agenticSearchService.search(normalizedQuestion, chunks, {
+      workspace: options.workspace || "all",
+      topK: options.topK,
+      maxRounds: options.maxRounds,
+      toCitation: (chunk, citationIndex) => this.toCitation(chunk, citationIndex),
+    });
   }
 
   async query(question: string, topK = 5, workspace?: string): Promise<QueryResult> {

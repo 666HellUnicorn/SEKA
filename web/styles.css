@@ -254,6 +254,34 @@ select:focus {
   color: var(--primary);
 }
 
+.agentic-round {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: linear-gradient(180deg, #ffffff, #fbfcff);
+}
+
+.round-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.round-hit {
+  border-left: 3px solid var(--primary);
+  padding-left: 0.7rem;
+}
+
+.round-hit p {
+  margin: 0.35rem 0 0;
+  color: #344054;
+  line-height: 1.5;
+}
+
 .workspace-bar {
   display: flex;
   align-items: center;

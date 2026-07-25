@@ -394,6 +394,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
+    if (req.method === "POST" && pathname === "/api/agentic-search") {
+      const body = JSON.parse((await readBody(req)).toString("utf8") || "{}") as Record<string, unknown>;
+      const workspace = typeof body.workspace === "string" ? body.workspace : undefined;
+      if (!requireWorkspace(workspace || "all")) return;
+      const result = kb.agenticSearch(assertString(body.question), {
+        workspace,
+        topK: toNumber(body.topK ?? body.top_k, 5),
+        maxRounds: toNumber(body.maxRounds ?? body.max_rounds, 3),
+      });
+      auth.audit(session!.user, "agentic_search.run", "agentic_search", "", {
+        question: result.question,
+        workspace: result.workspace,
+        roundCount: result.rounds.length,
+        sourceCount: result.sources.length,
+      });
+      sendJson(res, result);
+      return;
+    }
+
     if (req.method === "POST" && pathname === "/api/search") {
       const body = JSON.parse((await readBody(req)).toString("utf8") || "{}") as Record<string, unknown>;
       const workspace = typeof body.workspace === "string" ? body.workspace : undefined;

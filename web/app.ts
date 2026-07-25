@@ -1,5 +1,6 @@
 import type {
   AgentRunResult,
+  AgenticSearchResult,
   AuditLogItem,
   CitationSource,
   FeedbackItem,
@@ -331,6 +332,96 @@ ${escapeHtml(result.answer)}
               .join("")
           : `<p class="empty">无工具调用</p>`
       }
+    </div>
+  `;
+}
+
+function renderAgenticSearchResult(result: AgenticSearchResult): void {
+  const container = $("#agentic-search-result");
+  container.className = "agent-result";
+  const roundsHtml = result.rounds
+    .map(
+      (round) => `
+        <article class="agentic-round">
+          <div class="round-header">
+            <strong>Round ${round.round} · ${escapeHtml(round.strategy)}</strong>
+            <span class="source-meta">命中 ${round.hitCount} 个 chunk</span>
+          </div>
+          <div class="tag-row">
+            ${round.queries
+              .map(
+                (query) => `
+                  <span class="tag" title="${escapeHtml(query.reason)}">${escapeHtml(query.query)}</span>
+                `,
+              )
+              .join("")}
+          </div>
+          ${
+            round.hits.length
+              ? round.hits
+                  .slice(0, 3)
+                  .map(
+                    (hit) => `
+                      <div class="round-hit">
+                        <strong>[${hit.citationIndex}] ${escapeHtml(hit.documentTitle || hit.documentFilename || "未知文档")}</strong>
+                        <span class="source-meta"> · score ${escapeHtml(hit.score)} · ${escapeHtml(hit.sectionTitle || "未命名章节")}</span>
+                        <p>${escapeHtml(hit.snippet.slice(0, 260))}</p>
+                      </div>
+                    `,
+                  )
+                  .join("")
+              : `<p class="empty">本轮没有命中。建议补充关键词或上传更多文档。</p>`
+          }
+        </article>
+      `,
+    )
+    .join("");
+  const toolCallsHtml = result.toolCalls
+    .map(
+      (call) => `
+        <div class="tool-call">
+          <strong>${escapeHtml(call.toolName)}</strong>
+          <span class="source-meta"> · ${escapeHtml(call.status)} · ${escapeHtml(call.startedAt)}</span>
+          <p>${escapeHtml(call.outputSummary)}</p>
+        </div>
+      `,
+    )
+    .join("");
+  container.innerHTML = `
+    <div class="agent-answer">
+      <strong>Workspace：</strong>${escapeHtml(result.workspace)}
+      <span class="source-meta"> · ${escapeHtml(result.createdAt)} · Sources ${result.sources.length}</span>
+
+${escapeHtml(result.answer)}
+    </div>
+    <div>
+      <h3>搜索轨迹</h3>
+      ${roundsHtml || `<p class="empty">暂无搜索轮次</p>`}
+    </div>
+    <div>
+      <h3>引用来源</h3>
+      ${
+        result.sources.length
+          ? result.sources
+              .map(
+                (source) => `
+                  <article class="source-item">
+                    <h3>[${source.citationIndex}] ${escapeHtml(source.documentTitle || source.documentFilename || "未知文档")}</h3>
+                    <div class="source-meta">
+                      页码：${escapeHtml(source.pageNumber || "N/A")} ·
+                      分数：${escapeHtml(source.score)} · 关键词：${escapeHtml(source.keywordScore)} · grep-only
+                    </div>
+                    <p>${escapeHtml(source.snippet)}</p>
+                  </article>
+                `,
+              )
+              .join("")
+          : `<p class="empty">建议补充关键词或上传更多文档。</p>`
+      }
+    </div>
+    <div>
+      <h3>工具调用</h3>
+      ${toolCallsHtml || `<p class="empty">无工具调用</p>`}
     </div>
   `;
 }
@@ -962,6 +1053,35 @@ async function searchKnowledge(event: SubmitEvent): Promise<void> {
   }
 }
 
+async function runAgenticSearch(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const questionInput = $("#agentic-search-input") as HTMLTextAreaElement;
+  const question = questionInput.value.trim();
+  if (!question) return;
+  const topK = Number(($("#agentic-search-topk-input") as HTMLInputElement).value || 5);
+  const maxRounds = Number(($("#agentic-search-rounds-input") as HTMLInputElement).value || 3);
+  const button = (event.currentTarget as HTMLFormElement).querySelector("button")!;
+  button.disabled = true;
+  button.textContent = "多轮检索中…";
+  try {
+    const result = await api<AgenticSearchResult>("/api/agentic-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, topK, maxRounds, workspace: state.currentWorkspace }),
+    });
+    renderAgenticSearchResult(result);
+    renderSources(result.sources);
+    await loadAuditLogs();
+  } catch (error) {
+    const container = $("#agentic-search-result");
+    container.className = "agent-result empty";
+    container.textContent = `Agentic Search 失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = "运行 Agentic Search";
+  }
+}
+
 async function runAgent(event: SubmitEvent): Promise<void> {
   event.preventDefault();
   const taskInput = $("#agent-task-input") as HTMLTextAreaElement;
@@ -1116,6 +1236,7 @@ $("#upload-form").addEventListener("submit", (event) => void uploadDocument(even
 $("#url-form").addEventListener("submit", (event) => void importUrl(event as SubmitEvent));
 $("#query-form").addEventListener("submit", (event) => void askQuestion(event as SubmitEvent));
 $("#search-form").addEventListener("submit", (event) => void searchKnowledge(event as SubmitEvent));
+$("#agentic-search-form").addEventListener("submit", (event) => void runAgenticSearch(event as SubmitEvent));
 $("#agent-form").addEventListener("submit", (event) => void runAgent(event as SubmitEvent));
 $("#export-form").addEventListener("submit", (event) => void exportMarkdownReport(event as SubmitEvent));
 $("#login-form").addEventListener("submit", (event) => void login(event as SubmitEvent));

@@ -104,6 +104,21 @@ try {
   if (search.results.length === 0) throw new Error("知识检索没有返回结果");
   if (search.workspace !== "resume") throw new Error("知识检索 workspace 异常");
 
+  const agenticSearch = kb.agenticSearch("这个项目的本地部署和引用来源亮点是什么？", {
+    workspace: "resume",
+    topK: 2,
+    maxRounds: 2,
+  });
+  if (agenticSearch.sources.length === 0) throw new Error("Agentic Search 没有返回引用来源");
+  if (agenticSearch.sources.length > 2 || agenticSearch.rounds.length > 2) throw new Error("Agentic Search topK/maxRounds 未生效");
+  if (!agenticSearch.toolCalls.some((call) => call.toolName === "grep.agentic_search")) {
+    throw new Error("Agentic Search 未记录 grep 工具调用");
+  }
+  const emptyAgenticSearch = kb.agenticSearch("zzzz_no_match_identifier", { workspace: "resume", topK: 2, maxRounds: 3 });
+  if (emptyAgenticSearch.sources.length !== 0 || !emptyAgenticSearch.answer.includes("没有找到足够证据")) {
+    throw new Error("Agentic Search 空结果处理异常");
+  }
+
   const feedback = await kb.submitFeedback({
     question: result.question,
     answer: result.answer,

@@ -83,6 +83,8 @@ try {
           "",
           "SEKA 支持通过 HTTP API 上传文档、解析切块、检索问答和返回引用来源。",
           "这个测试验证真实全栈接口可以工作。",
+          "权限隔离通过 RBAC、viewer、allowedWorkspaces 和 workspace 实现。",
+          "审计日志 audit_logs 会记录 document.upload、knowledge.query 和 agentic_search.run。",
         ].join("\n"),
       ],
       { type: "text/markdown" },
@@ -151,6 +153,30 @@ try {
     adminToken,
   );
   assert(search.status === 200 && search.data.results.length > 0, "搜索接口没有结果");
+
+  const agenticSearch = await request<{ answer: string; rounds: unknown[]; sources: unknown[]; toolCalls: Array<{ toolName: string }> }>(
+    baseUrl,
+    "/api/agentic-search",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: "这个项目如何体现权限隔离和审计能力？",
+        workspace: "api-updated",
+        topK: 3,
+        maxRounds: 3,
+      }),
+    },
+    adminToken,
+  );
+  assert(agenticSearch.status === 200, `Agentic Search 接口失败：${JSON.stringify(agenticSearch.data)}`);
+  assert(agenticSearch.data.rounds.length >= 1, "Agentic Search 应返回搜索轮次");
+  assert(agenticSearch.data.sources.length > 0, "Agentic Search 应返回引用来源");
+  assert(agenticSearch.data.answer.includes("Agentic Search") || agenticSearch.data.answer.includes("证据"), "Agentic Search 回答应说明证据");
+  assert(
+    agenticSearch.data.toolCalls.some((call) => call.toolName === "grep.agentic_search"),
+    "Agentic Search 应返回 grep 工具调用",
+  );
 
   const stats = await request<{ stats: { documentCount: number; chunkCount: number } }>(baseUrl, "/api/stats", {}, adminToken);
   assert(stats.status === 200 && stats.data.stats.documentCount >= 1, "统计接口异常");
@@ -226,6 +252,18 @@ try {
   );
   assert(viewerAllowedQuery.status === 200, "viewer 应可查询授权 workspace");
 
+  const viewerAllowedAgenticSearch = await request<{ sources: unknown[] }>(
+    baseUrl,
+    "/api/agentic-search",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: "RBAC 和 allowedWorkspaces 如何限制权限？", workspace: "api-updated", topK: 3 }),
+    },
+    viewerLogin.data.token,
+  );
+  assert(viewerAllowedAgenticSearch.status === 200 && viewerAllowedAgenticSearch.data.sources.length > 0, "viewer 应可 Agentic Search 授权 workspace");
+
   const viewerDeniedQuery = await request<{ error: string }>(
     baseUrl,
     "/api/query",
@@ -238,10 +276,28 @@ try {
   );
   assert(viewerDeniedQuery.status === 403, "viewer 不应查询未授权 workspace");
 
+  const viewerDeniedAgenticSearch = await request<{ error: string }>(
+    baseUrl,
+    "/api/agentic-search",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: "company workspace 有哪些内容？", workspace: "secret", topK: 3 }),
+    },
+    viewerLogin.data.token,
+  );
+  assert(viewerDeniedAgenticSearch.status === 403, "viewer 不应 Agentic Search 未授权 workspace");
+
   const viewerDeniedExport = await fetch(`${baseUrl}/api/export/markdown?workspace=all`, {
     headers: { Authorization: `Bearer ${viewerLogin.data.token}` },
   });
   assert(viewerDeniedExport.status === 403, "viewer 不应导出 all workspace");
+
+  const auditLogs = await request<{ auditLogs: Array<{ action: string }> }>(baseUrl, "/api/audit-logs?limit=80", {}, adminToken);
+  assert(
+    auditLogs.status === 200 && auditLogs.data.auditLogs.some((log) => log.action === "agentic_search.run"),
+    "审计日志应包含 agentic_search.run",
+  );
 
   const updateViewerWorkspaces = await request<{ user: { allowedWorkspaces: string[] } }>(
     baseUrl,
