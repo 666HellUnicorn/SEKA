@@ -12,6 +12,10 @@ export const WEB_DIR = resolve(process.env.SEKA_WEB_DIR ?? resolve(ROOT_DIR, "we
 export const HOST = process.env.SEKA_HOST ?? "127.0.0.1";
 export const PORT = Number.parseInt(process.env.SEKA_PORT ?? "8765", 10);
 
+export const JEV_ENABLED = /^(1|true|yes)$/i.test(process.env.SEKA_JEV_ENABLED ?? "false");
+export const JEV_MODEL = process.env.TYPESAFE_DEFAULT_MODEL ?? "jev-latest";
+export const JEV_TIMEOUT_MS = Number.parseInt(process.env.SEKA_JEV_TIMEOUT_MS ?? "6000", 10);
+
 export const CHUNK_SIZE = Number.parseInt(process.env.SEKA_CHUNK_SIZE ?? "900", 10);
 export const CHUNK_OVERLAP = Number.parseInt(process.env.SEKA_CHUNK_OVERLAP ?? "140", 10);
 export const MAX_UPLOAD_BYTES = Number.parseInt(
@@ -33,4 +37,3 @@ export const ALLOWED_EXTENSIONS = new Set([
   ".json",
   ".csv",
 ]);
-

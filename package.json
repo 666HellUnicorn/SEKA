@@ -21,6 +21,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
     "marked": "^18.0.5",
     "pdfjs-dist": "^6.0.227",
     "tesseract.js": "^7.0.0"

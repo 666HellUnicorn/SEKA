@@ -6,6 +6,8 @@ import {
   DATA_DIR,
   DB_PATH,
   HOST,
+  JEV_ENABLED,
+  JEV_MODEL,
   MAX_UPLOAD_BYTES,
   PORT,
   UPLOAD_DIR,
@@ -26,6 +28,9 @@ export function getRuntimeSettings(): RuntimeSettings {
     llmConfigured: Boolean(process.env.OPENAI_API_KEY ?? process.env.SEKA_LLM_API_KEY),
     llmBaseUrl: process.env.SEKA_LLM_BASE_URL ?? "https://api.openai.com/v1",
     llmModel: process.env.SEKA_LLM_MODEL ?? "gpt-4o-mini",
+    jevConfigured: Boolean(process.env.TYPESAFE_API_KEY?.trim()),
+    jevEnabled: JEV_ENABLED,
+    jevModel: JEV_MODEL,
     nodeVersion: process.version,
     usingDefaultAdminPassword: !process.env.SEKA_ADMIN_PASSWORD,
   };

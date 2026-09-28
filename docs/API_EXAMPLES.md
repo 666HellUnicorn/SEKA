@@ -100,6 +100,29 @@ Invoke-RestMethod `
   -Body '{"question":"SEKA 作为简历项目有哪些亮点？","workspace":"resume","topK":5}'
 ```
 
+## Agentic Search + Grep
+
+默认只使用本地 grep-style 检索；传入 `useJev=true` 后，如果配置了
+`TYPESAFE_API_KEY`，Jev 会负责判断是否继续下一轮以及下一轮使用扩展词还是兜底词。
+没有 API Key、请求失败或超时都会自动回退到本地策略。
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:8765/api/agentic-search" `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body '{"question":"这个项目如何体现权限隔离和审计能力？","workspace":"resume","topK":5,"maxRounds":3,"useJev":true}'
+```
+
+响应重点字段：
+
+- `rounds`：每轮 grep 查询、命中数量、引用片段和 Jev 决策。
+- `sources`：去重后的最终引用来源。
+- `engine`：`local-grep` 或 `jev+grep`。
+- `jev`：是否请求、是否实际使用、模型和回退原因。
+- `toolCalls`：`grep.agentic_search` 与实际发生的 `jev.system_one` 调用。
+
 ## Agent 工作台
 
 ```powershell

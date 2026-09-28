@@ -1,5 +1,6 @@
 import type {
   AgentToolCall,
+  AgenticSearchDecision,
   AgenticSearchQuery,
   AgenticSearchResult,
   AgenticSearchRound,
@@ -7,6 +8,7 @@ import type {
   KnowledgeChunk,
   ScoredChunk,
 } from "../shared/types.ts";
+import { JevDecisionService } from "./jev.ts";
 import { tokenize } from "./retrieval.ts";
 import { newId, utcNow } from "./utils.ts";
 
@@ -14,6 +16,7 @@ interface AgenticSearchOptions {
   workspace?: string;
   topK?: number;
   maxRounds?: number;
+  useJev?: boolean;
   toCitation: (chunk: ScoredChunk, citationIndex: number) => CitationSource;
 }
 
@@ -60,19 +63,35 @@ const EXPANSION_GROUPS: Array<{ triggers: string[]; terms: string[]; reason: str
 ];
 
 export class AgenticSearchService {
-  search(question: string, chunks: KnowledgeChunk[], options: AgenticSearchOptions): AgenticSearchResult {
+  private readonly jev: Pick<JevDecisionService, "configured" | "model" | "decide">;
+
+  constructor(jev: Pick<JevDecisionService, "configured" | "model" | "decide"> = new JevDecisionService()) {
+    this.jev = jev;
+  }
+
+  async search(question: string, chunks: KnowledgeChunk[], options: AgenticSearchOptions): Promise<AgenticSearchResult> {
     const normalizedQuestion = question.trim();
     const topK = clampInteger(options.topK, 5, 1, 20);
     const maxRounds = clampInteger(options.maxRounds, 3, 1, 5);
     const workspace = options.workspace || "all";
     const startedAt = utcNow();
+    const jevRequested = options.useJev === true;
+    const jevStatus = {
+      requested: jevRequested,
+      configured: this.jev.configured,
+      used: false,
+      model: this.jev.model,
+      fallbackReason: jevRequested && !this.jev.configured ? "未配置 TYPESAFE_API_KEY" : "",
+    };
 
     const plans = this.planQueries(normalizedQuestion, maxRounds);
+    const remainingPlans = [...plans];
     const allHits = new Map<string, ScoredChunk>();
     const rounds: AgenticSearchRound[] = [];
+    const toolCalls: AgentToolCall[] = [];
 
-    for (let index = 0; index < plans.length; index += 1) {
-      const plan = plans[index];
+    while (remainingPlans.length > 0 && rounds.length < maxRounds) {
+      const plan = remainingPlans.shift()!;
       const roundHits = new Map<string, ScoredChunk>();
 
       for (const query of plan.queries) {
@@ -86,32 +105,64 @@ export class AgenticSearchService {
         .slice(0, topK)
         .map((chunk, citationIndex) => options.toCitation(chunk, citationIndex + 1));
 
-      rounds.push({
-        round: index + 1,
+      const round: AgenticSearchRound = {
+        round: rounds.length + 1,
         strategy: plan.strategy,
         queries: plan.queries,
         hitCount: roundHits.size,
         hits: citations,
-      });
+      };
 
-      if (allHits.size >= topK) break;
+      let decision: AgenticSearchDecision | undefined;
+      if (jevRequested && this.jev.configured) {
+        const jevResult = await this.jev.decide({
+          question: normalizedQuestion,
+          round: round.round,
+          maxRounds,
+          hitCount: roundHits.size,
+          sourceCount: allHits.size,
+          currentStrategy: plan.strategy,
+          availableStrategies: remainingPlans.map((item) => item.strategy),
+        });
+        decision = jevResult.decision;
+        jevStatus.used = jevStatus.used || jevResult.decision.provider === "jev";
+        if (jevResult.error) jevStatus.fallbackReason = jevResult.error;
+        toolCalls.push({
+          id: newId(),
+          toolName: "jev.system_one",
+          input: {
+            question: normalizedQuestion,
+            round: round.round,
+            hitCount: roundHits.size,
+            sourceCount: allHits.size,
+          },
+          outputSummary: jevResult.decision.rationale,
+          status: jevResult.error ? "error" : "success",
+          startedAt: utcNow(),
+          endedAt: utcNow(),
+        });
+      }
+      round.decision = decision ?? localDecision(round.round, maxRounds, allHits, plan.strategy, topK);
+      rounds.push(round);
+
+      const localStop = decision?.provider === "jev" ? false : shouldStopLocally(allHits, topK);
+      if (round.decision.action === "stop" || localStop) break;
+      prioritizePlan(remainingPlans, round.decision.nextStrategy);
     }
 
     const sources = sortHits([...allHits.values()])
       .slice(0, topK)
       .map((chunk, index) => options.toCitation(chunk, index + 1));
     const endedAt = utcNow();
-    const toolCalls: AgentToolCall[] = [
-      {
-        id: newId(),
-        toolName: "grep.agentic_search",
-        input: { question: normalizedQuestion, workspace, topK, maxRounds },
-        outputSummary: `完成 ${rounds.length} 轮 grep-style 检索，命中 ${sources.length} 个引用来源。`,
-        status: "success",
-        startedAt,
-        endedAt,
-      },
-    ];
+    toolCalls.unshift({
+      id: newId(),
+      toolName: "grep.agentic_search",
+      input: { question: normalizedQuestion, workspace, topK, maxRounds, useJev: jevRequested },
+      outputSummary: `完成 ${rounds.length} 轮 grep-style 检索，命中 ${sources.length} 个引用来源。`,
+      status: "success",
+      startedAt,
+      endedAt,
+    });
 
     return {
       question: normalizedQuestion,
@@ -120,6 +171,8 @@ export class AgenticSearchService {
       rounds,
       sources,
       toolCalls,
+      engine: jevStatus.used ? "jev+grep" : "local-grep",
+      jev: jevStatus,
       createdAt: endedAt,
     };
   }
@@ -297,6 +350,39 @@ function mergeHit(target: Map<string, ScoredChunk>, hit: ScoredChunk): void {
   const existing = target.get(hit.id);
   if (!existing || hit.score > existing.score) {
     target.set(hit.id, hit);
+  }
+}
+
+function localDecision(
+  round: number,
+  maxRounds: number,
+  hits: Map<string, ScoredChunk>,
+  currentStrategy: string,
+  topK: number,
+): AgenticSearchDecision {
+  const enough = shouldStopLocally(hits, topK);
+  const nextStrategy = currentStrategy === "original_terms" ? "expanded_terms" : "fallback_terms";
+  return {
+    provider: "local",
+    action: enough || round >= maxRounds ? "stop" : "continue",
+    nextStrategy,
+    confidence: enough ? 0.9 : 0.6,
+    rationale: enough ? "本地策略认为当前证据覆盖已足够。" : `本地策略继续尝试 ${nextStrategy}。`,
+  };
+}
+
+function shouldStopLocally(hits: Map<string, ScoredChunk>, topK: number): boolean {
+  if (hits.size === 0) return false;
+  const distinctDocuments = new Set([...hits.values()].map((hit) => hit.documentId)).size;
+  const strongHit = [...hits.values()].some((hit) => hit.score >= 0.78);
+  return (hits.size >= topK && distinctDocuments >= Math.min(2, topK)) || (hits.size >= 1 && strongHit);
+}
+
+function prioritizePlan(plans: QueryPlan[], strategy: string): void {
+  const index = plans.findIndex((plan) => plan.strategy === strategy);
+  if (index > 0) {
+    const [selected] = plans.splice(index, 1);
+    plans.unshift(selected);
   }
 }
 

@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripTypeScriptTypes } from "node:module";
-import { HOST, PORT, WEB_DIR } from "./config.ts";
+import { HOST, JEV_ENABLED, PORT, WEB_DIR } from "./config.ts";
 import { Database } from "./db.ts";
 import { KnowledgeBase } from "./core.ts";
 import { KnowledgeAgent } from "./agent.ts";
@@ -398,16 +398,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       const body = JSON.parse((await readBody(req)).toString("utf8") || "{}") as Record<string, unknown>;
       const workspace = typeof body.workspace === "string" ? body.workspace : undefined;
       if (!requireWorkspace(workspace || "all")) return;
-      const result = kb.agenticSearch(assertString(body.question), {
+      const requestedJev =
+        typeof body.useJev === "boolean"
+          ? body.useJev
+          : typeof body.use_jev === "boolean"
+            ? body.use_jev
+            : JEV_ENABLED;
+      const result = await kb.agenticSearch(assertString(body.question), {
         workspace,
         topK: toNumber(body.topK ?? body.top_k, 5),
         maxRounds: toNumber(body.maxRounds ?? body.max_rounds, 3),
+        useJev: requestedJev,
       });
       auth.audit(session!.user, "agentic_search.run", "agentic_search", "", {
         question: result.question,
         workspace: result.workspace,
         roundCount: result.rounds.length,
         sourceCount: result.sources.length,
+        engine: result.engine,
+        jevUsed: result.jev.used,
       });
       sendJson(res, result);
       return;

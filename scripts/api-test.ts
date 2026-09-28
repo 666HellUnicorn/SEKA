@@ -9,6 +9,7 @@ process.env.SEKA_DB_PATH = join(tempDir, "seka.db");
 process.env.SEKA_UPLOAD_DIR = join(tempDir, "uploads");
 process.env.SEKA_HOST = "127.0.0.1";
 process.env.SEKA_PORT = "0";
+delete process.env.TYPESAFE_API_KEY;
 
 const { run } = await import("../src/server/server.ts");
 
@@ -154,7 +155,14 @@ try {
   );
   assert(search.status === 200 && search.data.results.length > 0, "搜索接口没有结果");
 
-  const agenticSearch = await request<{ answer: string; rounds: unknown[]; sources: unknown[]; toolCalls: Array<{ toolName: string }> }>(
+  const agenticSearch = await request<{
+    answer: string;
+    rounds: unknown[];
+    sources: unknown[];
+    toolCalls: Array<{ toolName: string }>;
+    engine: string;
+    jev: { requested: boolean; configured: boolean; used: boolean; fallbackReason: string };
+  }>(
     baseUrl,
     "/api/agentic-search",
     {
@@ -165,6 +173,7 @@ try {
         workspace: "api-updated",
         topK: 3,
         maxRounds: 3,
+        useJev: true,
       }),
     },
     adminToken,
@@ -176,6 +185,13 @@ try {
   assert(
     agenticSearch.data.toolCalls.some((call) => call.toolName === "grep.agentic_search"),
     "Agentic Search 应返回 grep 工具调用",
+  );
+  assert(
+    agenticSearch.data.engine === "local-grep" &&
+      agenticSearch.data.jev.requested &&
+      !agenticSearch.data.jev.configured &&
+      !agenticSearch.data.jev.used,
+    "Jev 未配置时应通过 API 回退到本地 grep",
   );
 
   const stats = await request<{ stats: { documentCount: number; chunkCount: number } }>(baseUrl, "/api/stats", {}, adminToken);

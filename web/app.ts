@@ -89,6 +89,7 @@ function renderSettings(settings: RuntimeSettings): void {
     <div><strong>最大上传</strong><span>${formatBytes(settings.maxUploadBytes)}</span></div>
     <div><strong>OCR</strong><span>${escapeHtml(settings.ocrLang)}</span></div>
     <div><strong>LLM</strong><span>${settings.llmConfigured ? "已配置" : "本地提取式"} · ${escapeHtml(settings.llmModel)}</span></div>
+    <div><strong>Jev</strong><span>${settings.jevConfigured ? "可用" : "未配置"} · ${escapeHtml(settings.jevModel)}${settings.jevEnabled ? " · 默认启用" : ""}</span></div>
     <div><strong>支持格式</strong><span>${escapeHtml(settings.allowedExtensions.join(", "))}</span></div>
   `;
   const warning = $("#security-warning");
@@ -347,6 +348,7 @@ function renderAgenticSearchResult(result: AgenticSearchResult): void {
             <strong>Round ${round.round} · ${escapeHtml(round.strategy)}</strong>
             <span class="source-meta">命中 ${round.hitCount} 个 chunk</span>
           </div>
+          ${round.decision ? `<div class="source-meta">决策：${escapeHtml(round.decision.action)} · 下一步：${escapeHtml(round.decision.nextStrategy)} · ${escapeHtml(round.decision.rationale)}</div>` : ""}
           <div class="tag-row">
             ${round.queries
               .map(
@@ -390,7 +392,9 @@ function renderAgenticSearchResult(result: AgenticSearchResult): void {
   container.innerHTML = `
     <div class="agent-answer">
       <strong>Workspace：</strong>${escapeHtml(result.workspace)}
-      <span class="source-meta"> · ${escapeHtml(result.createdAt)} · Sources ${result.sources.length}</span>
+      <span class="source-meta"> · ${escapeHtml(result.createdAt)} · Sources ${result.sources.length} · Engine ${escapeHtml(result.engine)}</span>
+
+      <div class="source-meta">Jev：${result.jev.requested ? (result.jev.used ? `已使用 ${escapeHtml(result.jev.model)}` : `已请求但回退本地（${escapeHtml(result.jev.fallbackReason || "未使用")}）`) : "未启用"}</div>
 
 ${escapeHtml(result.answer)}
     </div>
@@ -1060,6 +1064,7 @@ async function runAgenticSearch(event: SubmitEvent): Promise<void> {
   if (!question) return;
   const topK = Number(($("#agentic-search-topk-input") as HTMLInputElement).value || 5);
   const maxRounds = Number(($("#agentic-search-rounds-input") as HTMLInputElement).value || 3);
+  const useJev = ($("#agentic-search-jev-input") as HTMLInputElement).checked;
   const button = (event.currentTarget as HTMLFormElement).querySelector("button")!;
   button.disabled = true;
   button.textContent = "多轮检索中…";
@@ -1067,7 +1072,7 @@ async function runAgenticSearch(event: SubmitEvent): Promise<void> {
     const result = await api<AgenticSearchResult>("/api/agentic-search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, topK, maxRounds, workspace: state.currentWorkspace }),
+      body: JSON.stringify({ question, topK, maxRounds, workspace: state.currentWorkspace, useJev }),
     });
     renderAgenticSearchResult(result);
     renderSources(result.sources);

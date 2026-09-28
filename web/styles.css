@@ -431,6 +431,14 @@ select:focus {
   width: 80px;
 }
 
+.query-actions .checkbox-label {
+  white-space: nowrap;
+}
+
+.query-actions .checkbox-label input {
+  width: auto;
+}
+
 .sources-card {
   padding: 1.1rem;
 }

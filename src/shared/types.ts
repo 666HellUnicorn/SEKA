@@ -76,6 +76,7 @@ export interface AgenticSearchRequest {
   workspace?: string;
   topK?: number;
   maxRounds?: number;
+  useJev?: boolean;
 }
 
 export interface AgenticSearchQuery {
@@ -90,6 +91,23 @@ export interface AgenticSearchRound {
   queries: AgenticSearchQuery[];
   hitCount: number;
   hits: CitationSource[];
+  decision?: AgenticSearchDecision;
+}
+
+export interface AgenticSearchDecision {
+  provider: "local" | "jev";
+  action: "continue" | "stop";
+  nextStrategy: string;
+  confidence: number;
+  rationale: string;
+}
+
+export interface JevIntegrationStatus {
+  requested: boolean;
+  configured: boolean;
+  used: boolean;
+  model: string;
+  fallbackReason: string;
 }
 
 export interface FeedbackItem {
@@ -162,6 +180,9 @@ export interface RuntimeSettings {
   llmConfigured: boolean;
   llmBaseUrl: string;
   llmModel: string;
+  jevConfigured: boolean;
+  jevEnabled: boolean;
+  jevModel: string;
   nodeVersion: string;
   usingDefaultAdminPassword: boolean;
 }
@@ -197,6 +218,8 @@ export interface AgenticSearchResult {
   rounds: AgenticSearchRound[];
   sources: CitationSource[];
   toolCalls: AgentToolCall[];
+  engine: "local-grep" | "jev+grep";
+  jev: JevIntegrationStatus;
   createdAt: string;
 }
 

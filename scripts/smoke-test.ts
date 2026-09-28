@@ -6,11 +6,14 @@ const tempDir = mkdtempSync(join(tmpdir(), "seka-ts-"));
 process.env.SEKA_DATA_DIR = tempDir;
 process.env.SEKA_DB_PATH = join(tempDir, "seka.db");
 process.env.SEKA_UPLOAD_DIR = join(tempDir, "uploads");
+delete process.env.TYPESAFE_API_KEY;
 
 const { KnowledgeBase } = await import("../src/server/core.ts");
 const { Database } = await import("../src/server/db.ts");
 const { KnowledgeAgent } = await import("../src/server/agent.ts");
 const { AuthService } = await import("../src/server/auth.ts");
+const { AgenticSearchService } = await import("../src/server/agentic-search.ts");
+const { JevDecisionService } = await import("../src/server/jev.ts");
 const { getRuntimeSettings } = await import("../src/server/settings.ts");
 
 try {
@@ -73,6 +76,7 @@ try {
         "",
         "SEKA 是一个本地可部署的个人和企业知识库 Agent。",
         "它支持文档解析、混合检索、RAG 问答、引用来源和用户反馈迭代。",
+        "权限隔离使用 RBAC、viewer 和 allowedWorkspaces 控制 workspace 访问。",
         "",
         "简历亮点包括：本地私有部署、答案可溯源、知识可持续更新。",
       ].join("\n"),
@@ -104,7 +108,77 @@ try {
   if (search.results.length === 0) throw new Error("知识检索没有返回结果");
   if (search.workspace !== "resume") throw new Error("知识检索 workspace 异常");
 
-  const agenticSearch = kb.agenticSearch("这个项目的本地部署和引用来源亮点是什么？", {
+  const identifierSearch = await kb.agenticSearch("RBAC allowedWorkspaces 如何限制 workspace？", {
+    workspace: "resume",
+    topK: 3,
+    maxRounds: 3,
+    useJev: true,
+  });
+  if (!identifierSearch.sources.length) throw new Error("Agentic Search 标识符检索没有返回结果");
+  if (new Set(identifierSearch.sources.map((source) => source.chunkId)).size !== identifierSearch.sources.length) {
+    throw new Error("Agentic Search 返回了重复 chunk");
+  }
+  if (!identifierSearch.jev.requested || identifierSearch.jev.configured || identifierSearch.jev.used) {
+    throw new Error("未配置 Jev 时应记录本地回退状态");
+  }
+
+  const mockJev = new JevDecisionService({
+    apiKey: "test-key",
+    fetch: async () =>
+      new Response(
+        JSON.stringify({
+          model: "jev-latest",
+          answers: {
+            action: { type: "choice", choice: "continue", confidence: 0.92, probabilities: { continue: 0.92, stop: 0.08 } },
+            nextStrategy: {
+              type: "choice",
+              choice: "expanded_terms",
+              confidence: 0.88,
+              probabilities: { expanded_terms: 0.88, fallback_terms: 0.08, original_terms: 0.04 },
+            },
+            enoughEvidence: { type: "noul", noul: 0.12 },
+          },
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+  });
+  const mockDecision = await mockJev.decide({
+    question: "如何限制 workspace？",
+    round: 1,
+    maxRounds: 3,
+    hitCount: 1,
+    sourceCount: 1,
+    currentStrategy: "original_terms",
+    availableStrategies: ["expanded_terms", "fallback_terms"],
+  });
+  if (mockDecision.decision.provider !== "jev" || mockDecision.decision.nextStrategy !== "expanded_terms") {
+    throw new Error("Jev SDK 结构化决策解析异常");
+  }
+  const jevEngineSearch = await new AgenticSearchService(mockJev).search("RBAC allowedWorkspaces", kb.listChunks(doc.id), {
+    workspace: "resume",
+    topK: 2,
+    maxRounds: 2,
+    useJev: true,
+    toCitation: (chunk, citationIndex) => ({
+      citationIndex,
+      chunkId: chunk.id,
+      documentId: chunk.documentId,
+      documentTitle: chunk.documentTitle ?? "",
+      documentFilename: chunk.documentFilename ?? "",
+      pageNumber: chunk.pageNumber,
+      sectionTitle: chunk.sectionTitle,
+      score: chunk.score,
+      keywordScore: chunk.keywordScore,
+      vectorScore: chunk.vectorScore,
+      snippet: chunk.content.slice(0, 700),
+    }),
+  });
+  if (jevEngineSearch.engine !== "jev+grep" || !jevEngineSearch.toolCalls.some((call) => call.toolName === "jev.system_one")) {
+    throw new Error("Agentic Search 未真正串联 Jev 决策层");
+  }
+
+  const agenticSearch = await kb.agenticSearch("这个项目的本地部署和引用来源亮点是什么？", {
     workspace: "resume",
     topK: 2,
     maxRounds: 2,
@@ -114,7 +188,7 @@ try {
   if (!agenticSearch.toolCalls.some((call) => call.toolName === "grep.agentic_search")) {
     throw new Error("Agentic Search 未记录 grep 工具调用");
   }
-  const emptyAgenticSearch = kb.agenticSearch("zzzz_no_match_identifier", { workspace: "resume", topK: 2, maxRounds: 3 });
+  const emptyAgenticSearch = await kb.agenticSearch("zzzz_no_match_identifier", { workspace: "resume", topK: 2, maxRounds: 1 });
   if (emptyAgenticSearch.sources.length !== 0 || !emptyAgenticSearch.answer.includes("没有找到足够证据")) {
     throw new Error("Agentic Search 空结果处理异常");
   }

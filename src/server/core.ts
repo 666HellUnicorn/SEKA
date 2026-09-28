@@ -196,10 +196,10 @@ export class KnowledgeBase {
     };
   }
 
-  agenticSearch(
+  async agenticSearch(
     question: string,
-    options: { topK?: number; maxRounds?: number; workspace?: string } = {},
-  ): AgenticSearchResult {
+    options: { topK?: number; maxRounds?: number; workspace?: string; useJev?: boolean } = {},
+  ): Promise<AgenticSearchResult> {
     const normalizedQuestion = question.trim();
     if (!normalizedQuestion) throw new Error("问题不能为空");
     const chunks =
@@ -208,6 +208,7 @@ export class KnowledgeBase {
       workspace: options.workspace || "all",
       topK: options.topK,
       maxRounds: options.maxRounds,
+      useJev: options.useJev,
       toCitation: (chunk, citationIndex) => this.toCitation(chunk, citationIndex),
     });
   }
